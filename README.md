@@ -154,26 +154,6 @@ GET /telemetry/totalMass
 OK 5000.75
 ```
 
-## Python Client
-
-A simple Python client is provided. **No external dependencies needed!**
-
-### Basic Usage
-
-```bash
-# Get throttle value
-python remote_control_client.py get /control/throttle
-
-# Set throttle to 75%
-python remote_control_client.py set /control/throttle 0.75
-
-# Get orbital speed
-python remote_control_client.py get /telemetry/orbitalSpeed
-
-# Turn engine on
-python remote_control_client.py set /control/engineOn 1
-```
-
 ## Examples with Various Tools
 
 ### Python (without client)
