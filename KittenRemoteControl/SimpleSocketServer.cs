@@ -5,28 +5,19 @@ using System.Text;
 namespace KittenRemoteControl
 {
     /// <summary>
-    /// Einfacher Socket-basierter Server für Text-Befehle
-    /// Unterstützt: GET /path und SET /path value
+    /// Simple TCP Server.
+    /// Allows registering GET and SET handlers.
     /// </summary>
-    public class SimpleSocketServer : IDisposable
+    public class SimpleSocketServer(int port = 8080) : IDisposable
     {
-        private readonly TcpListener _listener;
-        private readonly Dictionary<string, Func<string>> _getHandlers;
-        private readonly Dictionary<string, Action<string>> _setHandlers;
+        private readonly TcpListener _listener = new(IPAddress.Any, port);
+        private readonly Dictionary<string, Func<string>> _getHandlers = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Action<string>> _setHandlers = new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _cts;
         private Task? _listenerTask;
-        private readonly int _port;
-
-        public SimpleSocketServer(int port = 8080)
-        {
-            _port = port;
-            _listener = new TcpListener(IPAddress.Any, port);
-            _getHandlers = new Dictionary<string, Func<string>>(StringComparer.OrdinalIgnoreCase);
-            _setHandlers = new Dictionary<string, Action<string>>(StringComparer.OrdinalIgnoreCase);
-        }
 
         /// <summary>
-        /// Registriert einen GET-Handler
+        /// Registers a GET-Handler
         /// </summary>
         public void RegisterGet(string path, Func<string> handler)
         {
@@ -34,7 +25,7 @@ namespace KittenRemoteControl
         }
 
         /// <summary>
-        /// Registriert einen SET-Handler
+        /// Registers a SET-Handler
         /// </summary>
         public void RegisterSet(string path, Action<string> handler)
         {
@@ -42,7 +33,7 @@ namespace KittenRemoteControl
         }
 
         /// <summary>
-        /// Startet den Server
+        /// Starts the Server
         /// </summary>
         public void Start()
         {
@@ -52,14 +43,14 @@ namespace KittenRemoteControl
             _listener.Start();
             _cts = new CancellationTokenSource();
             _listenerTask = Task.Run(() => ListenAsync(_cts.Token));
-            Console.WriteLine($"Socket Server started on port {_port}");
+            Console.WriteLine($"Socket Server started on port {port}");
             Console.WriteLine("Commands: GET /path | SET /path value");
         }
 
         /// <summary>
-        /// Stoppt den Server
+        /// Stops the Server
         /// </summary>
-        public void Stop()
+        private void Stop()
         {
             _cts?.Cancel();
             _listener.Stop();
@@ -96,7 +87,7 @@ namespace KittenRemoteControl
                 {
                     var stream = client.GetStream();
                     var buffer = new byte[4096];
-                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    var bytesRead = await stream.ReadAsync(buffer);
                     
                     if (bytesRead > 0)
                     {
@@ -104,7 +95,7 @@ namespace KittenRemoteControl
                         var response = ProcessCommand(command);
                         
                         var responseBytes = Encoding.UTF8.GetBytes(response + "\n");
-                        await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                        await stream.WriteAsync(responseBytes);
                     }
                 }
             }
@@ -118,7 +109,7 @@ namespace KittenRemoteControl
         {
             try
             {
-                var parts = command.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = command.Split([' '], StringSplitOptions.RemoveEmptyEntries);
                 
                 if (parts.Length == 0)
                 {
@@ -127,31 +118,26 @@ namespace KittenRemoteControl
 
                 var verb = parts[0].ToUpper();
 
-                if (verb == "GET" && parts.Length >= 2)
+                switch (verb)
                 {
-                    var path = parts[1];
-                    if (_getHandlers.TryGetValue(path, out var handler))
+                    case "GET" when parts.Length >= 2:
                     {
+                        var path = parts[1];
+                        if (!_getHandlers.TryGetValue(path, out var handler)) return $"ERROR: Unknown path '{path}'";
                         var result = handler();
                         return $"OK {result}";
                     }
-                    return $"ERROR: Unknown path '{path}'";
-                }
-                else if (verb == "SET" && parts.Length >= 3)
-                {
-                    var path = parts[1];
-                    var value = parts[2];
-                    
-                    if (_setHandlers.TryGetValue(path, out var handler))
+                    case "SET" when parts.Length >= 3:
                     {
+                        var path = parts[1];
+                        var value = parts[2];
+
+                        if (!_setHandlers.TryGetValue(path, out var handler)) return $"ERROR: Unknown path '{path}'";
                         handler(value);
                         return "OK";
                     }
-                    return $"ERROR: Unknown path '{path}'";
-                }
-                else
-                {
-                    return $"ERROR: Invalid command format. Use: GET /path or SET /path value";
+                    default:
+                        return $"ERROR: Invalid command format. Use: GET /path or SET /path value";
                 }
             }
             catch (Exception ex)
