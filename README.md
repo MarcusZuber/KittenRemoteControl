@@ -4,8 +4,7 @@ A simple socket-based server mod for Kitten Space Agency that enables remote con
 
 ## Installation
 
-1. Copy `KittenRemoteControl.dll` to your Kitten Space Agency mod directory
-2. Start the game - the socket server will automatically start on port 8080
+Install according this explanation: https://forums.ahwoo.com/threads/how-to-use-starmap-mod-loader.398/#post-2113
 
 ## Protocol
 
