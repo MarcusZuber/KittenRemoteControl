@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="Brutal.Core.Numerics">
+            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.Core.Numerics.dll</HintPath>
+        </Reference>
+        <Reference Include="Brutal.Glfw">
+            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.Glfw.dll</HintPath>
+        </Reference>
+        <Reference Include="Brutal.ImGui">
+            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.ImGui.dll</HintPath>
+        </Reference>
+        <Reference Include="Brutal.ImGui.Extensions">
+            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.ImGui.Extensions.dll</HintPath>
+        </Reference>
+        <Reference Include="KSA">
+            <HintPath>I:\Program Files\Kitten Space Agency\KSA.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
+        <PackageReference Include="starmap.api" Version="0.1.5"/>
+    </ItemGroup>
+
+</Project>
