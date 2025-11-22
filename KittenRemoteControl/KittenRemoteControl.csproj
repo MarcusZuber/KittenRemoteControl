@@ -9,27 +9,25 @@
         <LangVersion>preview</LangVersion>
     </PropertyGroup>
 
+
+    <!-- Add dynamic references to any DLLs provided in a sibling KSA_dlls folder.
+         This is enabled for both local builds and CI now. -->
     <ItemGroup>
-        <Reference Include="Brutal.Core.Numerics">
-            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.Core.Numerics.dll</HintPath>
-        </Reference>
-        <Reference Include="Brutal.Glfw">
-            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.Glfw.dll</HintPath>
-        </Reference>
-        <Reference Include="Brutal.ImGui">
-            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.ImGui.dll</HintPath>
-        </Reference>
-        <Reference Include="Brutal.ImGui.Extensions">
-            <HintPath>I:\Program Files\Kitten Space Agency\Brutal.ImGui.Extensions.dll</HintPath>
-        </Reference>
-        <Reference Include="KSA">
-            <HintPath>I:\Program Files\Kitten Space Agency\KSA.dll</HintPath>
+        <!-- Collect all DLLs from the KSA_dlls folder (relative to the project file) -->
+        <KsaDlls Include="$(MSBuildThisFileDirectory)..\KSA_dlls\*.dll"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Add each found DLL as a Reference using its filename as the assembly name -->
+        <Reference Include="@(KsaDlls->'%(Filename)')">
+            <HintPath>%(KsaDlls.Identity)</HintPath>
+            <Private>true</Private>
         </Reference>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
-        <PackageReference Include="starmap.api" Version="0.2.4" />
+        <PackageReference Include="starmap.api" Version="0.3.0" />
     </ItemGroup>
 
 </Project>
