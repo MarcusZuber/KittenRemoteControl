@@ -50,21 +50,59 @@ jobs:
 
     - name: Create Release Package
       run: |
-        $buildDir = "KittenRemoteControl/bin/Release"
-        $packageDir = "KittenRemoteControl_Package"
-        $contentDir = "$packageDir/KittenRemoteControl"
-        
+        $project = 'KittenRemoteControl'
+        Write-Host "Searching repository recursively for $project.dll and $project.deps.json (excluding obj folders)..."
+
+        # Find the newest DLL (exclude obj folders)
+        $dll = Get-ChildItem -Path . -Filter "$project.dll" -File -Recurse -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -notmatch '\\obj\\' } |
+               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+        if (-not $dll) {
+          Write-Error "Could not find $project.dll anywhere in the repository. Ensure the project was built successfully."
+          exit 1
+        }
+
+        # Find the matching deps.json (newest)
+        $deps = Get-ChildItem -Path . -Filter "$project.deps.json" -File -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch '\\obj\\' } |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+        if (-not $deps) {
+          Write-Warning "Could not find $project.deps.json. Continuing without it."
+        }
+
+        $packageDir = "$project`_Package"
+        $contentDir = "$packageDir/$project"
+
         # Create directories
+        if (Test-Path $contentDir) { Remove-Item -Recurse -Force $contentDir }
         New-Item -ItemType Directory -Path $contentDir -Force | Out-Null
-        
+
         # Copy files
-        Copy-Item "$buildDir/KittenRemoteControl.dll" $contentDir -Force
-        Copy-Item "$buildDir/KittenRemoteControl.deps.json" $contentDir -Force
-        Copy-Item "KittenRemoteControl/mod.toml" $contentDir -Force
-        Copy-Item "LICENSE" $contentDir -Force
-        
+        Write-Host "Copying DLL: $($dll.FullName) -> $contentDir"
+        Copy-Item $dll.FullName -Destination $contentDir -Force
+
+        if ($deps) {
+          Write-Host "Copying DEPS: $($deps.FullName) -> $contentDir"
+          Copy-Item $deps.FullName -Destination $contentDir -Force
+        }
+
+        # Copy additional files (mod.toml, LICENSE) with sensible fallbacks
+        $modPaths = @("$project/mod.toml", "./mod.toml", "KittenRemoteControl/mod.toml")
+        $copiedMod = $false
+        foreach ($p in $modPaths) {
+          if (Test-Path $p) { Copy-Item $p $contentDir -Force; $copiedMod = $true; break }
+        }
+        if (-not $copiedMod) { Write-Warning "mod.toml not found in known locations." }
+
+        if (Test-Path "LICENSE") { Copy-Item "LICENSE" $contentDir -Force } else { Write-Warning "LICENSE not found." }
+
         # Create zip
-        Compress-Archive -Path $contentDir -DestinationPath "KittenRemoteControl.zip" -Force
+        if (Test-Path "$packageDir.zip") { Remove-Item "$packageDir.zip" -Force }
+        Compress-Archive -Path $contentDir -DestinationPath "$packageDir.zip" -Force
+        Write-Host "Created $packageDir.zip containing:"
+        Get-ChildItem -Path $contentDir | ForEach-Object { Write-Host " - $($_.Name)" }
       shell: powershell
 
     - name: Clean up SSH key
