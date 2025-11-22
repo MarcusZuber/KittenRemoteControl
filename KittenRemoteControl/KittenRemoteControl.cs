@@ -2,18 +2,18 @@
 using StarMap.API;
 
 namespace KittenRemoteControl
-{    [StarMapMod]
+{
+    [StarMapMod]
     public class RemoteControlMain
     {
-        public bool ImmediateUnload => false;
         private SimpleSocketServer? _server;
-        
+
         [StarMapAfterGui]
         public void OnAfterUi(double dt)
         {
         }
-        
-        
+
+
         [StarMapAllModsLoaded]
         public void OnFullyLoaded()
         {
@@ -76,6 +76,77 @@ namespace KittenRemoteControl
                     }
                 });
 
+                _server.RegisterGet("/control/referenceFrame", () =>
+                {
+                    if (Program.ControlledVehicle == null) return "0";
+                    var frame = Program.ControlledVehicle.NavBallData.Frame;
+                    return frame.ToString();
+                });
+
+                _server.RegisterSet("/control/referenceFrame", (value) =>
+                {
+                    if (Program.ControlledVehicle == null)
+                        throw new Exception("No vehicle controlled");
+
+                    // Try to parse enum value
+                    if (!Enum.TryParse<VehicleReferenceFrame>(value, true, out var frame))
+                    {
+                        // If parse failed access the numeric value directly
+                        if (int.TryParse(value, out var numeric) &&
+                            Enum.IsDefined(typeof(VehicleReferenceFrame), numeric))
+                        {
+                            frame = (VehicleReferenceFrame)numeric;
+                        }
+                        else
+                        {
+                            throw new ArgumentException($"Invalid reference frame: '{value}'");
+                        }
+                    }
+
+                    // set the new frame
+                    var v = Program.ControlledVehicle;
+                    v.SetNavBallFrame(frame);
+                    if (v.FlightComputer.AttitudeMode == FlightComputerAttitudeMode.Auto)
+                        v.FlightComputer.RateHold(frame);
+                });
+
+                _server.RegisterGet("/control/referenceFrames", () =>
+                {
+                    var names = Enum.GetNames<VehicleReferenceFrame>();
+                    return string.Join(",", names);
+                });
+
+                _server.RegisterGet("/control/FlightComputer/AttitudeMode", () =>
+                {
+                    var v = Program.ControlledVehicle;
+                    return v?.FlightComputer.AttitudeMode.ToString();
+                });
+
+                _server.RegisterGet("/control/FlightComputer/AttitudeModes", () =>
+                {
+                    var names = Enum.GetNames<FlightComputerAttitudeMode>();
+                    return string.Join(",", names);
+                });
+
+                _server.RegisterSet("/control/FlightComputer/AttitudeMode", (value) =>
+                {
+                    var v = Program.ControlledVehicle;
+                    if (Enum.TryParse<FlightComputerAttitudeMode>(value, true, out var mode))
+                    {
+                        v?.FlightComputer.AttitudeMode = mode;
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Invalid FlightComputer AttitudeMode: '{value}'");
+                    }
+                });
+
+                _server.RegisterSet("/control/FlightComputer/stabilization", (value) =>
+                {
+                    var v = Program.ControlledVehicle;
+                    v?.SetStabilization(value == "1");
+                });
+
                 // GET /telemetry/apoapasis - Apoapsis value
                 _server.RegisterGet("/telemetry/apoapsis", () =>
                 {
@@ -85,13 +156,9 @@ namespace KittenRemoteControl
                         var orbit = v?.Orbit;
                         if (orbit == null) return "0";
                         var val = (object)orbit.Apoapsis;
-                        if (val is IConvertible)
-                        {
-                            var d = Convert.ToDouble(val, System.Globalization.CultureInfo.InvariantCulture);
-                            return d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-                        }
-
-                        return "0";
+                        if (val is not IConvertible) return "0";
+                        var d = Convert.ToDouble(val, System.Globalization.CultureInfo.InvariantCulture);
+                        return d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
                     }
                     catch
                     {
@@ -109,13 +176,9 @@ namespace KittenRemoteControl
                         var orbit = v?.Orbit;
                         if (orbit == null) return "0";
                         var val = (object)orbit.Periapsis;
-                        if (val is IConvertible)
-                        {
-                            var d = Convert.ToDouble(val, System.Globalization.CultureInfo.InvariantCulture);
-                            return d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-                        }
-
-                        return "0";
+                        if (val is not IConvertible) return "0";
+                        var d = Convert.ToDouble(val, System.Globalization.CultureInfo.InvariantCulture);
+                        return d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
                     }
                     catch
                     {
@@ -245,12 +308,12 @@ namespace KittenRemoteControl
                 Console.WriteLine($"Failed to start Socket server: {ex.Message}");
             }
         }
-        
+
         [StarMapImmediateLoad]
         public void OnImmediatLoad()
         {
         }
-        
+
         [StarMapUnload]
         public void Unload()
         {
@@ -260,8 +323,6 @@ namespace KittenRemoteControl
 
         /// <summary>
         /// Helper to read a value from _manualControlInputs
-        ///
-        /// For some reason, they do not want us to directly set the value on the struct, so we have to do some reflection magic.
         /// </summary>
         private static T? GetManualControlValue<T>(string fieldName)
         {
@@ -289,8 +350,6 @@ namespace KittenRemoteControl
 
         /// <summary>
         /// Helper to set a value in _manualControlInputs
-        ///
-        /// For some reason, they do not want us to directly set the value on the struct, so we have to do some reflection magic.
         /// </summary>
         private static void SetManualControlValue<T>(string fieldName, T value)
         {

@@ -74,6 +74,87 @@ SET /control/engineOn 2
 ERROR: EngineOn must be 0 or 1, got 2
 ```
 
+#### GET /control/referenceFrame
+Get the current navball/reference frame for the controlled vehicle.
+
+**Example:**
+```
+GET /control/referenceFrame
+OK LVLH
+```
+
+#### SET /control/referenceFrame VALUE
+Set the navball/reference frame. VALUE can be the enum name (case-insensitive) or its numeric value.
+
+**Examples:**
+```
+SET /control/referenceFrame LVLH
+OK
+
+SET /control/referenceFrame 2
+OK
+```
+
+**Error:**
+```
+SET /control/referenceFrame unknown
+ERROR: Invalid reference frame: 'unknown'
+```
+
+When setting the reference frame the server will also attempt to update the flight computer (RateHold) if the flight computer is in auto attitude mode.
+
+#### GET /control/referenceFrames
+List all available reference frame names (comma separated).
+
+**Example:**
+```
+GET /control/referenceFrames
+OK LVLH,Inertial,Surface
+```
+
+#### GET /control/FlightComputer/AttitudeMode
+Get the current attitude mode of the vehicle's flight computer.
+
+**Example:**
+```
+GET /control/FlightComputer/AttitudeMode
+OK Auto
+```
+
+#### GET /control/FlightComputer/AttitudeModes
+List all available flight computer attitude modes.
+
+**Example:**
+```
+GET /control/FlightComputer/AttitudeModes
+OK Auto,Manual,Hold
+```
+
+#### SET /control/FlightComputer/AttitudeMode VALUE
+Set the flight computer attitude mode by name. Value is case-insensitive.
+
+**Example:**
+```
+SET /control/FlightComputer/AttitudeMode Auto
+OK
+```
+
+**Error:**
+```
+SET /control/FlightComputer/AttitudeMode Foo
+ERROR: Invalid FlightComputer AttitudeMode: 'Foo'
+```
+
+#### SET /control/FlightComputer/stabilization VALUE
+Enable or disable stabilization. VALUE `1` = enable, `0` = disable.
+
+**Example:**
+```
+SET /control/FlightComputer/stabilization 1
+OK
+```
+
+
 ### Telemetry Endpoints
 
 All telemetry endpoints are read-only (GET only) and return numeric values as strings in invariant culture format.
@@ -271,6 +352,11 @@ Access to private game structures (`_manualControlInputs`) is achieved through r
 |----------|------|-------|-------------|
 | `/control/throttle` | GET/SET | 0.0-1.0 | Engine throttle |
 | `/control/engineOn` | GET/SET | 0 or 1 | Engine on/off |
+| `/control/referenceFrame` | GET/SET | enum or numeric | Navball / reference frame |
+| `/control/referenceFrames` | GET | - | Comma separated list of frames |
+| `/control/FlightComputer/AttitudeMode` | GET/SET | enum name | FlightComputer attitude mode |
+| `/control/FlightComputer/AttitudeModes` | GET | - | Comma separated list of modes |
+| `/control/FlightComputer/stabilization` | SET | 0 or 1 | Enable/disable stabilization |
 
 ### Telemetry Commands (Read-Only)
 | Endpoint | Description |
@@ -288,4 +374,3 @@ Access to private game structures (`_manualControlInputs`) is achieved through r
 ## License
 
 MIT License
-

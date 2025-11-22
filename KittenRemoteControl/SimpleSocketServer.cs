@@ -19,7 +19,7 @@ namespace KittenRemoteControl
         /// <summary>
         /// Registers a GET-Handler
         /// </summary>
-        public void RegisterGet(string path, Func<string> handler)
+        public void RegisterGet(string path, Func<string?> handler)
         {
             _getHandlers[path] = handler;
         }
