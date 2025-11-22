@@ -10,17 +10,49 @@
     </PropertyGroup>
 
 
-    <!-- Add dynamic references to any DLLs provided in a sibling KSA_dlls folder.
-         This is enabled for both local builds and CI now. -->
-    <ItemGroup>
-        <!-- Collect all DLLs from the KSA_dlls folder (relative to the project file) -->
-        <KsaDlls Include="$(MSBuildThisFileDirectory)..\KSA_dlls\*.dll"/>
+    <!-- Allow overriding the KSA DLLs location via an environment variable/property KSA_DLLS_PATH -->
+    <PropertyGroup>
+        <KsaDllsOverride>$(KSA_DLLS_PATH)</KsaDllsOverride>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(KsaDllsOverride)' != ''">
+        <KsaDlls Include="$(KsaDllsOverride)\*.dll" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(KsaDllsOverride)' == ''">
+        <!-- Collect all DLLs from the KSA_dll and KSA_dlls folders (relative to the project file) -->
+        <KsaDlls Include="$(MSBuildProjectDirectory)\..\KSA_dll\*.dll;$(MSBuildProjectDirectory)\..\KSA_dlls\*.dll" />
+    </ItemGroup>
+
+    <Target Name="ShowKsaDlls" BeforeTargets="BeforeBuild">
+        <Message Importance="High" Text="KSA dlls found: @(KsaDlls->'%(FullPath)')" />
+    </Target>
+
+    <Target Name="FailIfNoKsaDlls" BeforeTargets="BeforeBuild">
+        <Message Importance="High" Text="Checking for KSA DLLs in ../KSA_dll, ../KSA_dlls or $(KsaDllsOverride) ..." />
+        <Error Condition="'@(KsaDlls)' == ''" Text="No KSA DLLs found in '../KSA_dll' or '../KSA_dlls' and no KSA_DLLS_PATH provided. Put the DLLs into one of those folders relative to the project or set the KSA_DLLS_PATH MSBuild property or env var to point to the folder." />
+    </Target>
+
     <ItemGroup>
-        <!-- Add each found DLL as a Reference using its filename as the assembly name -->
-        <Reference Include="@(KsaDlls->'%(Filename)')">
-            <HintPath>%(KsaDlls.Identity)</HintPath>
+        <!-- Add explicit references to the specific KSA DLLs from the KSA_dlls folder -->
+        <Reference Include="Brutal.Core.Numerics">
+            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.Core.Numerics.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
+        <Reference Include="Brutal.Glfw">
+            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.Glfw.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
+        <Reference Include="Brutal.ImGui">
+            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.ImGui.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
+        <Reference Include="Brutal.ImGui.Extensions">
+            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.ImGui.Extensions.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
+        <Reference Include="KSA">
+            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\KSA.dll</HintPath>
             <Private>true</Private>
         </Reference>
     </ItemGroup>
@@ -29,5 +61,10 @@
         <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
         <PackageReference Include="starmap.api" Version="0.3.0" />
     </ItemGroup>
+
+    <Target Name="DumpReferences" BeforeTargets="CoreCompile">
+        <Message Importance="High" Text="--- Dumping Reference items (Identity | HintPath) ---" />
+        <Message Importance="High" Text="%(Reference.Identity) | %(Reference.HintPath)" />
+    </Target>
 
 </Project>

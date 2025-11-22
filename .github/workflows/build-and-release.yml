@@ -12,6 +12,8 @@ jobs:
     env:
       # Expose the optional personal token as a job env so we can safely reference it
       STARMAP_NUGET_TOKEN: ${{ secrets.STARMAP_NUGET_TOKEN }}
+      # Optional token to access a private external repo with the KSA DLLs
+      KSA_DLLS_TOKEN: ${{ secrets.KSA_DLLS_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
@@ -19,20 +21,43 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '9.0.x'
 
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
-      shell: bash
+    - name: Checkout KSA_dlls (using personal token)
+      if: ${{ env.KSA_DLLS_TOKEN != '' }}
+      uses: actions/checkout@v4
+      with:
+        repository: 'MarcusZuber/KSA_dlls'
+        path: 'KSA_dlls'
+        token: ${{ env.KSA_DLLS_TOKEN }}
 
-    - name: Clone KSA DLLs
+    - name: Checkout KSA_dlls (using runner token)
+      if: ${{ env.KSA_DLLS_TOKEN == '' }}
+      uses: actions/checkout@v4
+      with:
+        repository: 'MarcusZuber/KSA_dlls'
+        path: 'KSA_dlls'
+        token: ${{ github.token }}
+
+    - name: Verify KSA DLLs
       run: |
-        git clone git@github.com:MarcusZuber/KSA_dlls.git KSA_dlls
-      shell: bash
+        Get-ChildItem -Path KSA_dlls -File | Select-Object Name,Length
+      shell: powershell
+
+    - name: Fail if KSA DLLs missing
+      run: |
+        $count = (Get-ChildItem -Path KSA_dlls -Filter '*.dll' -File -ErrorAction SilentlyContinue | Measure-Object).Count
+        if ($count -eq 0) {
+          Write-Error "No DLLs found in KSA_dlls. Ensure the external repo was checked out and the secret KSA_DLLS_TOKEN is set if the repo is private."
+          exit 1
+        } else {
+          Write-Host "Found $count DLL(s) in KSA_dlls."
+        }
+      shell: powershell
+
+    # If checkout fails because the external repo is private, add a repository-scoped PAT with
+    # at least `repo` / `read:packages` access and store it as the repository secret `KSA_DLLS_TOKEN`.
+    # Then rerun the workflow. The `Verify KSA DLLs` step will show the files in the job logs.
 
     - name: Add StarMap GitHub Packages NuGet feed (using personal token)
       if: ${{ env.STARMAP_NUGET_TOKEN != '' }}
@@ -66,12 +91,6 @@ jobs:
         # Create zip
         Compress-Archive -Path $contentDir -DestinationPath "KittenRemoteControl.zip" -Force
       shell: powershell
-
-    - name: Clean up SSH key
-      if: always()
-      run: |
-        rm -f ~/.ssh/id_rsa
-      shell: bash
 
     - name: Remove cloned DLLs
       if: always()
