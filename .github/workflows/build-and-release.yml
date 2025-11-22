@@ -34,14 +34,6 @@ jobs:
         git clone git@github.com:MarcusZuber/KSA_dlls.git KSA_dlls
       shell: bash
 
-    # Register the private GitHub Packages NuGet feed so `dotnet restore` can access it.
-    - name: Add StarMap GitHub Packages NuGet feed (using GITHUB_TOKEN)
-      run: |
-        # If a source with the same name exists, try to remove it first (ignore errors)
-        try { dotnet nuget remove source StarMap } catch { }
-        dotnet nuget add source "https://nuget.pkg.github.com/StarMapLoader/index.json" --name "StarMap" --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
-      shell: powershell
-
     - name: Add StarMap GitHub Packages NuGet feed (using personal token)
       if: ${{ env.STARMAP_NUGET_TOKEN != '' }}
       run: |
