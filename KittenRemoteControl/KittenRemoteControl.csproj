@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <LangVersion>preview</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,7 +29,7 @@
 
     <ItemGroup>
         <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
-        <PackageReference Include="starmap.api" Version="0.1.5"/>
+        <PackageReference Include="starmap.api" Version="0.2.4" />
     </ItemGroup>
 
 </Project>

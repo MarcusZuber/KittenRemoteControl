@@ -2,20 +2,19 @@
 using StarMap.API;
 
 namespace KittenRemoteControl
-{
-    public class RemoteControlMain : IStarMapMod, IStarMapOnUi
+{    [StarMapMod]
+    public class RemoteControlMain
     {
         public bool ImmediateUnload => false;
         private SimpleSocketServer? _server;
-
+        
+        [StarMapAfterGui]
         public void OnAfterUi(double dt)
         {
         }
-
-        public void OnBeforeUi(double dt)
-        {
-        }
-
+        
+        
+        [StarMapAllModsLoaded]
         public void OnFullyLoaded()
         {
             Patcher.Patch();
@@ -246,11 +245,13 @@ namespace KittenRemoteControl
                 Console.WriteLine($"Failed to start Socket server: {ex.Message}");
             }
         }
-
+        
+        [StarMapImmediateLoad]
         public void OnImmediatLoad()
         {
         }
-
+        
+        [StarMapUnload]
         public void Unload()
         {
             _server?.Dispose();
