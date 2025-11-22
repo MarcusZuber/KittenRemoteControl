@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      # Expose the optional personal token as a job env so we can safely reference it
+      STARMAP_NUGET_TOKEN: ${{ secrets.STARMAP_NUGET_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
@@ -40,10 +43,11 @@ jobs:
       shell: powershell
 
     - name: Add StarMap GitHub Packages NuGet feed (using personal token)
-      if: ${{ secrets.STARMAP_NUGET_TOKEN != '' }}
+      if: ${{ env.STARMAP_NUGET_TOKEN != '' }}
       run: |
         try { dotnet nuget remove source StarMap } catch { }
-        dotnet nuget add source "https://nuget.pkg.github.com/StarMapLoader/index.json" --name "StarMap" --username "${{ github.actor }}" --password "${{ secrets.STARMAP_NUGET_TOKEN }}" --store-password-in-clear-text
+        # Use the job environment variable in PowerShell
+        dotnet nuget add source "https://nuget.pkg.github.com/StarMapLoader/index.json" --name "StarMap" --username "${{ github.actor }}" --password "$env:STARMAP_NUGET_TOKEN" --store-password-in-clear-text
       shell: powershell
 
     - name: Restore dependencies
