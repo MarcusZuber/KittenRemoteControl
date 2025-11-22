@@ -1,0 +1,98 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+      shell: bash
+
+    - name: Clone KSA DLLs
+      run: |
+        git clone git@github.com:MarcusZuber/KSA_dlls.git KSA_dlls
+      shell: bash
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Create Release Package
+      run: |
+        $buildDir = "KittenRemoteControl/bin/Release"
+        $packageDir = "KittenRemoteControl_Package"
+        $contentDir = "$packageDir/KittenRemoteControl"
+        
+        # Create directories
+        New-Item -ItemType Directory -Path $contentDir -Force | Out-Null
+        
+        # Copy files
+        Copy-Item "$buildDir/KittenRemoteControl.dll" $contentDir -Force
+        Copy-Item "$buildDir/KittenRemoteControl.deps.json" $contentDir -Force
+        Copy-Item "KittenRemoteControl/mod.toml" $contentDir -Force
+        Copy-Item "LICENSE" $contentDir -Force
+        
+        # Create zip
+        Compress-Archive -Path $contentDir -DestinationPath "KittenRemoteControl.zip" -Force
+      shell: powershell
+
+    - name: Clean up SSH key
+      if: always()
+      run: |
+        rm -f ~/.ssh/id_rsa
+      shell: bash
+
+    - name: Remove cloned DLLs
+      if: always()
+      run: |
+        Remove-Item -Recurse -Force KSA_dlls -ErrorAction SilentlyContinue
+      shell: powershell
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: KittenRemoteControl
+        path: KittenRemoteControl.zip
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./KittenRemoteControl.zip
+        asset_name: KittenRemoteControl.zip
+        asset_content_type: application/zip
+
