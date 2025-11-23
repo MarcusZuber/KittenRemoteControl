@@ -1,0 +1,22 @@
+StarMap API License
+
+The StarMap API is part of the StarMap Mod Loader for Kitten Space Agency.
+
+Copyright (c) StarMap Contributors
+
+Permission is hereby granted to use the StarMap API for mod development
+in accordance with the StarMap Mod Loader terms.
+
+---
+
+StarMap.API
+https://github.com/StarMapLoader
+Version: 0.3.1
+NuGet: https://www.nuget.org/packages/starmap.api/
+
+For full license details, please refer to the StarMap repository:
+https://github.com/StarMapLoader/StarMap
+
+Note: This is a reference to the API package. The actual license may vary.
+Please check the official StarMap repository for the most current license terms.
+

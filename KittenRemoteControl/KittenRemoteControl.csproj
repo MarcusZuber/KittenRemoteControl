@@ -60,6 +60,7 @@
     <ItemGroup>
         <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
         <PackageReference Include="starmap.api" Version="0.3.1" />
+        <PackageReference Include="Grapevine" Version="5.0.2" />
     </ItemGroup>
 
     <Target Name="DumpReferences" BeforeTargets="CoreCompile">

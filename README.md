@@ -1,22 +1,96 @@
-﻿# Kitten Remote Control - API Documentation
+﻿# Kitten Remote Control - REST API Documentation
 
-A simple socket-based server mod for Kitten Space Agency that enables remote control via simple text commands.
+A RESTful API server mod for Kitten Space Agency that enables remote control via HTTP endpoints with JSON responses.
 
 ## Installation
 
-Install according this explanation: https://forums.ahwoo.com/threads/how-to-use-starmap-mod-loader.398/#post-2113
+### From GitHub Releases (Recommended)
+
+1. **Download the latest release** from the [Releases page](https://github.com/[your-repo]/KittenRemoteControl/releases)
+2. **Extract the ZIP file** to your game's mod directory:
+   ```
+   <Game Directory>/mods/KittenRemoteControl/
+   ```
+   Example:
+   ```
+   C:\Program Files\Kitten Space Agency\mods\KittenRemoteControl\
+   ```
+3. **Launch the game** - StarMap mod loader will automatically load the mod
+4. **Check the console** for the message: "Remote Control REST Server started successfully on http://localhost:8080"
+
+### Manual Installation
+
+If you want to build from source:
+
+1. Clone the repository
+2. Ensure you have the KSA DLLs in the `KSA_dlls` directory (see [Development](#development))
+3. Build the project:
+   ```bash
+   dotnet build -c Release
+   ```
+4. Copy the contents of `bin/Release/net9.0/` to your game's mod directory
+
+### Verification
+
+To verify the installation:
+1. Launch Kitten Space Agency
+2. Open a browser and navigate to: http://localhost:8080/telemetry/totalMass
+3. You should see a JSON response with the current vessel's mass
+
+## What's Included
+
+The release package includes:
+- ✅ Main mod DLL (KittenRemoteControl.dll)
+- ✅ All required dependencies (Harmony, Grapevine, Microsoft.Extensions.*)
+- ✅ Complete documentation (README, OpenAPI spec)
+- ✅ All license files
+
+**Note**: Kitten Space Agency game files are NOT included. You must own the game to use this mod.
+
+For a complete list of included files, see [RELEASE-PACKAGE.md](RELEASE-PACKAGE.md).
+
+## Requirements
+
+- **Kitten Space Agency** (the game)
+- **StarMap Mod Loader** v0.3.1 or higher
+- **.NET 9.0 Runtime** (usually included with the game)
+
+## Uninstallation
+
+To remove the mod:
+1. Delete the `KittenRemoteControl` folder from your game's mods directory
+2. Restart the game
+
+## Installation according to this explanation
+
+See: https://forums.ahwoo.com/threads/how-to-use-starmap-mod-loader.398/#post-2113
 
 ## Protocol
 
-The server uses a simple text-based protocol over TCP sockets.
+The server uses a RESTful HTTP API with JSON request/response format powered by Grapevine.
 
-### Command Format
+### Base URL
+```
+http://localhost:8080
+```
 
-- **GET /path** - Retrieve a value
-  - Response: `OK value` or `ERROR message`
-  
-- **SET /path value** - Set a value
-  - Response: `OK` or `ERROR message`
+### Response Format
+
+All endpoints return JSON objects. Successful responses include relevant data, error responses include an `error` field.
+
+**Success Example:**
+```json
+{
+  "throttle": 0.75
+}
+```
+
+**Error Example:**
+```json
+{
+  "error": "Throttle must be between 0.0 and 1.0, got 1.5"
+}
+```
 
 ## Available Endpoints
 
@@ -25,286 +99,510 @@ The server uses a simple text-based protocol over TCP sockets.
 #### GET /control/throttle
 Get the current engine throttle value (0.0 to 1.0).
 
-**Example:**
-```
-GET /control/throttle
-OK 0.75
+**Response:**
+```json
+{
+  "throttle": 0.75
+}
 ```
 
-#### SET /control/throttle
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/throttle
+```
+
+#### PUT /control/throttle
 Set the engine throttle value (0.0 to 1.0).
 
-**Example:**
-```
-SET /control/throttle 0.5
-OK
+**Request Body (JSON):**
+```json
+{
+  "throttle": 0.5
+}
 ```
 
-**Error:**
+**Or plain value:**
 ```
-SET /control/throttle 1.5
-ERROR: Throttle must be between 0.0 and 1.0, got 1.5
+0.5
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "throttle": 0.5
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Throttle must be between 0.0 and 1.0, got 1.5"
+}
+```
+
+**cURL Examples:**
+```bash
+# JSON
+curl -X PUT -H "Content-Type: application/json" -d '{"throttle":0.5}' http://localhost:8080/control/throttle
+
+# Plain value
+curl -X PUT -H "Content-Type: text/plain" -d '0.5' http://localhost:8080/control/throttle
 ```
 
 #### GET /control/engineOn
 Get the engine on/off status.
 
-**Returns:** `1` = engine on, `0` = engine off
-
-**Example:**
+**Response:**
+```json
+{
+  "engineOn": true
+}
 ```
-GET /control/engineOn
-OK 1
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/engineOn
 ```
 
-#### SET /control/engineOn
+#### PUT /control/engineOn
 Turn the engine on or off.
 
-**Values:** `0` = off, `1` = on
+**Request Body (JSON):**
+```json
+{
+  "engineOn": true
+}
+```
 
-**Example:**
-```
-SET /control/engineOn 1
-OK
+**Or plain value:** `true`, `false`, `1`, or `0`
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "engineOn": true
+}
 ```
 
-**Error:**
-```
-SET /control/engineOn 2
-ERROR: EngineOn must be 0 or 1, got 2
+**cURL Examples:**
+```bash
+# JSON
+curl -X PUT -H "Content-Type: application/json" -d '{"engineOn":true}' http://localhost:8080/control/engineOn
+
+# Plain value
+curl -X PUT -H "Content-Type: text/plain" -d '1' http://localhost:8080/control/engineOn
 ```
 
 #### GET /control/referenceFrame
 Get the current navball/reference frame for the controlled vehicle.
 
-**Example:**
-```
-GET /control/referenceFrame
-OK LVLH
-```
-
-#### SET /control/referenceFrame VALUE
-Set the navball/reference frame. VALUE can be the enum name (case-insensitive) or its numeric value.
-
-**Examples:**
-```
-SET /control/referenceFrame LVLH
-OK
-
-SET /control/referenceFrame 2
-OK
+**Response:**
+```json
+{
+  "frame": "LVLH",
+  "frameId": 0
+}
 ```
 
-**Error:**
-```
-SET /control/referenceFrame unknown
-ERROR: Invalid reference frame: 'unknown'
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/referenceFrame
 ```
 
-When setting the reference frame the server will also attempt to update the flight computer (RateHold) if the flight computer is in auto attitude mode.
+#### PUT /control/referenceFrame
+Set the navball/reference frame. Value can be the enum name (case-insensitive) or its numeric value.
+
+**Request Body (JSON with name):**
+```json
+{
+  "frame": "LVLH"
+}
+```
+
+**Request Body (JSON with ID):**
+```json
+{
+  "frame": 0
+}
+```
+
+**Or plain value:** `LVLH` or `0`
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "frame": "LVLH",
+  "frameId": 0
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Invalid reference frame: 'unknown'"
+}
+```
+
+**cURL Examples:**
+```bash
+# JSON with name
+curl -X PUT -H "Content-Type: application/json" -d '{"frame":"LVLH"}' http://localhost:8080/control/referenceFrame
+
+# JSON with ID
+curl -X PUT -H "Content-Type: application/json" -d '{"frame":0}' http://localhost:8080/control/referenceFrame
+
+# Plain value
+curl -X PUT -H "Content-Type: text/plain" -d 'LVLH' http://localhost:8080/control/referenceFrame
+```
+
+**Note:** When setting the reference frame, the server will also attempt to update the flight computer (RateHold) if the flight computer is in auto attitude mode.
 
 #### GET /control/referenceFrames
-List all available reference frame names (comma separated).
+List all available reference frames.
 
-**Example:**
-```
-GET /control/referenceFrames
-OK LVLH,Inertial,Surface
+**Response:**
+```json
+{
+  "frames": [
+    { "name": "LVLH", "value": 0 },
+    { "name": "Inertial", "value": 1 },
+    { "name": "Surface", "value": 2 }
+  ]
+}
 ```
 
-#### GET /control/FlightComputer/AttitudeMode
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/referenceFrames
+```
+
+#### GET /control/flightComputer/attitudeMode
 Get the current attitude mode of the vehicle's flight computer.
 
-**Example:**
-```
-GET /control/FlightComputer/AttitudeMode
-OK Auto
+**Response:**
+```json
+{
+  "attitudeMode": "Auto",
+  "modeId": 0
+}
 ```
 
-#### GET /control/FlightComputer/AttitudeModes
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/flightComputer/attitudeMode
+```
+
+#### GET /control/flightComputer/attitudeModes
 List all available flight computer attitude modes.
 
-**Example:**
-```
-GET /control/FlightComputer/AttitudeModes
-OK Auto,Manual,Hold
-```
-
-#### SET /control/FlightComputer/AttitudeMode VALUE
-Set the flight computer attitude mode by name. Value is case-insensitive.
-
-**Example:**
-```
-SET /control/FlightComputer/AttitudeMode Auto
-OK
+**Response:**
+```json
+{
+  "modes": [
+    { "name": "Auto", "value": 0 },
+    { "name": "Manual", "value": 1 },
+    { "name": "Hold", "value": 2 }
+  ]
+}
 ```
 
-**Error:**
-```
-SET /control/FlightComputer/AttitudeMode Foo
-ERROR: Invalid FlightComputer AttitudeMode: 'Foo'
-```
-
-#### SET /control/FlightComputer/stabilization VALUE
-Enable or disable stabilization. VALUE `1` = enable, `0` = disable.
-
-**Example:**
-```
-SET /control/FlightComputer/stabilization 1
-OK
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/flightComputer/attitudeModes
 ```
 
+#### PUT /control/flightComputer/attitudeMode
+Set the flight computer attitude mode by name or ID.
+
+**Request Body (JSON):**
+```json
+{
+  "mode": "Auto"
+}
+```
+
+**Or:** `{"mode": 0}` or plain value `Auto` or `0`
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "attitudeMode": "Auto",
+  "modeId": 0
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Invalid FlightComputer AttitudeMode: 'Foo'"
+}
+```
+
+**cURL Examples:**
+```bash
+# JSON
+curl -X PUT -H "Content-Type: application/json" -d '{"mode":"Auto"}' http://localhost:8080/control/flightComputer/attitudeMode
+
+# Plain value
+curl -X PUT -H "Content-Type: text/plain" -d 'Auto' http://localhost:8080/control/flightComputer/attitudeMode
+```
+
+#### PUT /control/flightComputer/stabilization
+Enable or disable stabilization.
+
+**Request Body (JSON):**
+```json
+{
+  "stabilization": true
+}
+```
+
+**Or plain value:** `true`, `false`, `1`, or `0`
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "stabilization": true
+}
+```
+
+**cURL Examples:**
+```bash
+# JSON
+curl -X PUT -H "Content-Type: application/json" -d '{"stabilization":true}' http://localhost:8080/control/flightComputer/stabilization
+
+# Plain value
+curl -X PUT -H "Content-Type: text/plain" -d '1' http://localhost:8080/control/flightComputer/stabilization
+```
 
 ### Telemetry Endpoints
 
-All telemetry endpoints are read-only (GET only) and return numeric values as strings in invariant culture format.
+All telemetry endpoints are read-only (GET only) and return numeric values in JSON format.
 
 #### GET /telemetry/apoapsis
-Get the apoapsis (highest point) of the current orbit.
+Get the apoapsis (highest point) of the current orbit in meters.
 
-**Example:**
-```
-GET /telemetry/apoapsis
-OK 750000.0
+**Response:**
+```json
+{
+  "apoapsis": 750000.0
+}
 ```
 
-#### GET /telemetry/apopasis
-Alias for `/telemetry/apoapsis` (common misspelling).
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/apoapsis
+```
 
 #### GET /telemetry/periapsis
-Get the periapsis (lowest point) of the current orbit.
+Get the periapsis (lowest point) of the current orbit in meters.
 
-**Example:**
+**Response:**
+```json
+{
+  "periapsis": 250000.0
+}
 ```
-GET /telemetry/periapsis
-OK 250000.0
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/periapsis
 ```
 
 #### GET /telemetry/orbitingBody/meanRadius
-Get the mean radius of the body being orbited.
+Get the mean radius of the body being orbited in meters.
 
-**Example:**
+**Response:**
+```json
+{
+  "meanRadius": 600000.0
+}
 ```
-GET /telemetry/orbitingBody/meanRadius
-OK 600000.0
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/orbitingBody/meanRadius
 ```
 
 #### GET /telemetry/apoapsis_elevation
-Get the apoapsis elevation above the surface (apoapsis - body mean radius).
+Get the apoapsis elevation above the surface (apoapsis - body mean radius) in meters.
 
-**Example:**
+**Response:**
+```json
+{
+  "apoapsisElevation": 150000.0
+}
 ```
-GET /telemetry/apoapsis_elevation
-OK 150000.0
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/apoapsis_elevation
 ```
 
 #### GET /telemetry/periapsis_elevation
-Get the periapsis elevation above the surface (periapsis - body mean radius).
+Get the periapsis elevation above the surface (periapsis - body mean radius) in meters.
 
-**Example:**
+**Response:**
+```json
+{
+  "periapsisElevation": 80000.0
+}
 ```
-GET /telemetry/periapsis_elevation
-OK 80000.0
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/periapsis_elevation
 ```
 
 #### GET /telemetry/orbitalSpeed
-Get the current orbital speed of the vessel.
+Get the current orbital speed of the vessel in m/s.
 
-**Example:**
+**Response:**
+```json
+{
+  "orbitalSpeed": 2250.5
+}
 ```
-GET /telemetry/orbitalSpeed
-OK 2250.5
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/orbitalSpeed
 ```
 
 #### GET /telemetry/propellantMass
-Get the current propellant mass of the vessel.
+Get the current propellant mass of the vessel in kg.
 
-**Example:**
+**Response:**
+```json
+{
+  "propellantMass": 1500.25
+}
 ```
-GET /telemetry/propellantMass
-OK 1500.25
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/propellantMass
 ```
 
 #### GET /telemetry/totalMass
-Get the total mass of the vessel.
+Get the total mass of the vessel in kg.
 
-**Example:**
+**Response:**
+```json
+{
+  "totalMass": 5000.75
+}
 ```
-GET /telemetry/totalMass
-OK 5000.75
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/telemetry/totalMass
 ```
 
 ## Examples with Various Tools
 
-### Python (without client)
+### Python
 ```python
-import socket
-
-def send_command(cmd):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(("localhost", 8080))
-    sock.sendall(cmd.encode('utf-8'))
-    response = sock.recv(4096).decode('utf-8')
-    sock.close()
-    return response
+import requests
 
 # GET example
-print(send_command("GET /telemetry/apoapsis"))  # OK 750000.0
+response = requests.get("http://localhost:8080/telemetry/apoapsis")
+print(response.json())  # {'apoapsis': 750000.0}
 
-# SET example
-print(send_command("SET /control/throttle 0.5"))  # OK
+# PUT example with JSON
+response = requests.put(
+    "http://localhost:8080/control/throttle",
+    json={"throttle": 0.5}
+)
+print(response.json())  # {'success': True, 'throttle': 0.5}
+
+# PUT example with plain value
+response = requests.put(
+    "http://localhost:8080/control/throttle",
+    data="0.5",
+    headers={"Content-Type": "text/plain"}
+)
+print(response.json())  # {'success': True, 'throttle': 0.5}
 ```
 
-### Netcat
-```bash
-# GET
-echo "GET /telemetry/periapsis" | nc localhost 8080
+### JavaScript (Node.js)
+```javascript
+// GET example
+fetch('http://localhost:8080/telemetry/orbitalSpeed')
+  .then(res => res.json())
+  .then(data => console.log(data));  // {orbitalSpeed: 2250.5}
 
-# SET
-echo "SET /control/throttle 0.75" | nc localhost 8080
+// PUT example
+fetch('http://localhost:8080/control/throttle', {
+  method: 'PUT',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({throttle: 0.5})
+})
+  .then(res => res.json())
+  .then(data => console.log(data));  // {success: true, throttle: 0.5}
 ```
 
 ### PowerShell
 ```powershell
-$client = [System.Net.Sockets.TcpClient]::new("localhost", 8080)
-$stream = $client.GetStream()
-$bytes = [System.Text.Encoding]::UTF8.GetBytes("GET /telemetry/orbitalSpeed")
-$stream.Write($bytes, 0, $bytes.Length)
-$buffer = New-Object byte[] 4096
-$count = $stream.Read($buffer, 0, 4096)
-[System.Text.Encoding]::UTF8.GetString($buffer, 0, $count)
-$client.Close()
+# GET example
+$response = Invoke-RestMethod -Uri "http://localhost:8080/telemetry/apoapsis"
+Write-Host $response.apoapsis  # 750000.0
+
+# PUT example with JSON
+$body = @{throttle = 0.5} | ConvertTo-Json
+$response = Invoke-RestMethod -Uri "http://localhost:8080/control/throttle" -Method Put -Body $body -ContentType "application/json"
+Write-Host $response.throttle  # 0.5
+
+# PUT example with plain value
+$response = Invoke-RestMethod -Uri "http://localhost:8080/control/throttle" -Method Put -Body "0.5" -ContentType "text/plain"
+Write-Host $response.throttle  # 0.5
 ```
 
 ### C#
 ```csharp
-using System.Net.Sockets;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 
-var client = new TcpClient("localhost", 8080);
-var stream = client.GetStream();
+var client = new HttpClient { BaseAddress = new Uri("http://localhost:8080") };
 
-var command = Encoding.UTF8.GetBytes("GET /control/throttle");
-stream.Write(command, 0, command.Length);
+// GET example
+var getResponse = await client.GetAsync("/telemetry/apoapsis");
+var getJson = await getResponse.Content.ReadAsStringAsync();
+var getResult = JsonSerializer.Deserialize<Dictionary<string, double>>(getJson);
+Console.WriteLine(getResult["apoapsis"]);  // 750000.0
 
-var buffer = new byte[4096];
-var bytesRead = stream.Read(buffer, 0, buffer.Length);
-var response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-Console.WriteLine(response);
-
-client.Close();
+// PUT example with JSON
+var putData = new { throttle = 0.5 };
+var putJson = JsonSerializer.Serialize(putData);
+var putContent = new StringContent(putJson, Encoding.UTF8, "application/json");
+var putResponse = await client.PutAsync("/control/throttle", putContent);
+var putResult = await putResponse.Content.ReadAsStringAsync();
+Console.WriteLine(putResult);  // {"success":true,"throttle":0.5}
 ```
 
 ## Error Handling
 
-All endpoints return errors in the format:
-```
-ERROR: <error message>
+All endpoints return error responses with HTTP status codes:
+- **200 OK**: Successful operation
+- **400 Bad Request**: Invalid input (e.g., value out of range, invalid enum value)
+- **500 Internal Server Error**: Server-side error
+
+**Error Response Format:**
+```json
+{
+  "error": "Error message describing what went wrong"
+}
 ```
 
 Common error scenarios:
-- **No vehicle controlled**: When trying to access telemetry without an active vessel
+- **No vehicle controlled**: When trying to access control/telemetry without an active vessel
 - **Invalid value**: When setting values outside allowed ranges
+- **Invalid enum**: When providing an invalid reference frame or attitude mode name
 - **Field not found**: When reflection fails to access internal game structures
 
 ## Development
@@ -315,62 +613,64 @@ dotnet build -c Release
 ```
 
 ### Deployment
-The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copied to the game's mod directory.
+The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copied to the game's mod directory along with Grapevine dependencies.
 
 ## Features
 
-- ✅ Simple socket-based server
-- ✅ No external dependencies (only .NET BCL)
-- ✅ No administrator access required
+- ✅ RESTful HTTP API with JSON
+- ✅ Powered by Grapevine server
+- ✅ Flexible input (JSON objects or plain values)
+- ✅ Proper HTTP status codes
+- ✅ Clean and modern API design
 - ✅ Works over network (not just localhost)
-- ✅ Simple text protocol
 - ✅ Async/await for non-blocking requests
 - ✅ Thread-safe
 - ✅ Clean reflection-based access to private game structures
 
-## Advantages over HTTP
-
-- **Simpler**: Just text commands, no HTTP overhead
-- **No Admin Rights**: Socket server doesn't need URL-ACL registration
-- **Network-ready**: Works automatically on all network interfaces
-- **Lightweight**: Minimal overhead, very fast
-
 ## Technical Details
 
-The server uses `TcpListener` from the .NET Base Class Library:
+The server uses Grapevine REST server framework:
 - Port: 8080 (configurable)
-- Protocol: Plain text over TCP
-- Format: Command-based (GET/SET)
+- Protocol: HTTP/1.1
+- Format: JSON (with fallback to plain text for simple values)
 - Encoding: UTF-8
 
-Access to private game structures (`_manualControlInputs`) is achieved through reflection, with proper struct write-back to ensure changes persist.
+Access to private game structures (`_manualControlInputs`) is achieved through reflection via `ManualControlHelper`, with proper struct write-back to ensure changes persist.
 
-## Quick Reference
+## API Reference
 
-### Control Commands
-| Endpoint | Type | Range | Description |
-|----------|------|-------|-------------|
-| `/control/throttle` | GET/SET | 0.0-1.0 | Engine throttle |
-| `/control/engineOn` | GET/SET | 0 or 1 | Engine on/off |
-| `/control/referenceFrame` | GET/SET | enum or numeric | Navball / reference frame |
-| `/control/referenceFrames` | GET | - | Comma separated list of frames |
-| `/control/FlightComputer/AttitudeMode` | GET/SET | enum name | FlightComputer attitude mode |
-| `/control/FlightComputer/AttitudeModes` | GET | - | Comma separated list of modes |
-| `/control/FlightComputer/stabilization` | SET | 0 or 1 | Enable/disable stabilization |
+### Control Endpoints
+| Endpoint | Method | Description | Request | Response |
+|----------|--------|-------------|---------|----------|
+| `/control/throttle` | GET | Get throttle | - | `{throttle: float}` |
+| `/control/throttle` | PUT | Set throttle (0.0-1.0) | `{throttle: float}` or plain | `{success: bool, throttle: float}` |
+| `/control/engineOn` | GET | Get engine state | - | `{engineOn: bool}` |
+| `/control/engineOn` | PUT | Set engine on/off | `{engineOn: bool}` or `0`/`1` | `{success: bool, engineOn: bool}` |
+| `/control/referenceFrame` | GET | Get reference frame | - | `{frame: string, frameId: int}` |
+| `/control/referenceFrame` | PUT | Set reference frame | `{frame: string/int}` or plain | `{success: bool, frame: string, frameId: int}` |
+| `/control/referenceFrames` | GET | List reference frames | - | `{frames: array}` |
+| `/control/flightComputer/attitudeMode` | GET | Get attitude mode | - | `{attitudeMode: string, modeId: int}` |
+| `/control/flightComputer/attitudeMode` | PUT | Set attitude mode | `{mode: string/int}` or plain | `{success: bool, attitudeMode: string, modeId: int}` |
+| `/control/flightComputer/attitudeModes` | GET | List attitude modes | - | `{modes: array}` |
+| `/control/flightComputer/stabilization` | PUT | Set stabilization | `{stabilization: bool}` or `0`/`1` | `{success: bool, stabilization: bool}` |
 
-### Telemetry Commands (Read-Only)
-| Endpoint | Description |
-|----------|-------------|
-| `/telemetry/apoapsis` | Apoapsis altitude |
-| `/telemetry/apopasis` | Alias for apoapsis |
-| `/telemetry/periapsis` | Periapsis altitude |
-| `/telemetry/orbitingBody/meanRadius` | Body mean radius |
-| `/telemetry/apoapsis_elevation` | Apoapsis above surface |
-| `/telemetry/periapsis_elevation` | Periapsis above surface |
-| `/telemetry/orbitalSpeed` | Current orbital velocity |
-| `/telemetry/propellantMass` | Current propellant mass |
-| `/telemetry/totalMass` | Total vessel mass |
+### Telemetry Endpoints (All GET, Read-Only)
+| Endpoint | Description | Response |
+|----------|-------------|----------|
+| `/telemetry/apoapsis` | Apoapsis altitude (m) | `{apoapsis: float}` |
+| `/telemetry/periapsis` | Periapsis altitude (m) | `{periapsis: float}` |
+| `/telemetry/orbitingBody/meanRadius` | Body mean radius (m) | `{meanRadius: float}` |
+| `/telemetry/apoapsis_elevation` | Apoapsis above surface (m) | `{apoapsisElevation: float}` |
+| `/telemetry/periapsis_elevation` | Periapsis above surface (m) | `{periapsisElevation: float}` |
+| `/telemetry/orbitalSpeed` | Orbital velocity (m/s) | `{orbitalSpeed: float}` |
+| `/telemetry/propellantMass` | Propellant mass (kg) | `{propellantMass: float}` |
+| `/telemetry/totalMass` | Total vessel mass (kg) | `{totalMass: float}` |
+
+## OpenAPI Documentation
+
+See [openapi.yaml](openapi.yaml) for the complete OpenAPI 3.0 specification.
 
 ## License
 
 MIT License
+

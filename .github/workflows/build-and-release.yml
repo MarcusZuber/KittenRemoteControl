@@ -51,58 +51,156 @@ jobs:
     - name: Create Release Package
       run: |
         $project = 'KittenRemoteControl'
-        Write-Host "Searching repository recursively for $project.dll and $project.deps.json (excluding obj folders)..."
+        Write-Host "Creating release package for $project..."
 
-        # Find the newest DLL (exclude obj folders)
-        $dll = Get-ChildItem -Path . -Filter "$project.dll" -File -Recurse -ErrorAction SilentlyContinue |
-               Where-Object { $_.FullName -notmatch '\\obj\\' } |
-               Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        # Find the build output directory (Release build)
+        $buildDir = Get-ChildItem -Path . -Filter "Release" -Directory -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object { $_.FullName -match "\\bin\\Release" -and $_.FullName -notmatch "\\obj\\" } |
+                    Select-Object -First 1
 
-        if (-not $dll) {
-          Write-Error "Could not find $project.dll anywhere in the repository. Ensure the project was built successfully."
+        if (-not $buildDir) {
+          Write-Error "Could not find Release build directory. Ensure the project was built successfully."
           exit 1
         }
 
-        # Find the matching deps.json (newest)
-        $deps = Get-ChildItem -Path . -Filter "$project.deps.json" -File -Recurse -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -notmatch '\\obj\\' } |
-                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        # Find the specific net9.0 directory
+        $outputDir = Get-ChildItem -Path $buildDir.FullName -Filter "net9.0" -Directory -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
 
-        if (-not $deps) {
-          Write-Warning "Could not find $project.deps.json. Continuing without it."
+        if (-not $outputDir) {
+          Write-Error "Could not find net9.0 output directory in $($buildDir.FullName)"
+          exit 1
         }
 
-        $packageDir = "$project`_Package"
-        $contentDir = "$packageDir/$project"
+        Write-Host "Found build output: $($outputDir.FullName)"
+
+        $contentDir = $project
 
         # Create directories
         if (Test-Path $contentDir) { Remove-Item -Recurse -Force $contentDir }
         New-Item -ItemType Directory -Path $contentDir -Force | Out-Null
 
-        # Copy files
-        Write-Host "Copying DLL: $($dll.FullName) -> $contentDir"
-        Copy-Item $dll.FullName -Destination $contentDir -Force
+        # Define DLLs to exclude (game files + already provided by mod loader)
+        $excludeDlls = @(
+          # Kitten Space Agency game files (proprietary)
+          'KSA.dll',
+          'Brutal.Core.Numerics.dll',
+          'Brutal.Glfw.dll',
+          'Brutal.ImGui.dll',
+          'Brutal.ImGui.Extensions.dll',
+          'Brutal.Core.Collections.dll',
+          'Brutal.Core.Common.dll',
+          'Brutal.Core.Logging.dll',
+          'Brutal.Core.Memory.dll',
+          'Brutal.Core.Strings.dll',
+          'Brutal.Fmod.dll',
+          'Brutal.Framework.dll',
+          'Brutal.Gli.dll',
+          'Brutal.Gli.Texture.dll',
+          'Brutal.GltfApi.dll',
+          'Brutal.ImGui.Abstractions.dll',
+          'Brutal.Ktx.dll',
+          'Brutal.Ktx.Texture.dll',
+          'Brutal.Native.dll',
+          'Brutal.ShaderCompiler.dll',
+          'Brutal.Stb.dll',
+          'Brutal.Stb.Texture.dll',
+          'Brutal.Texture.dll',
+          'Brutal.Vulkan.dll',
+          'Brutal.Vulkan.Abstractions.dll',
+          # Already provided by StarMap mod loader
+          'StarMap.API.dll',
+          '0Harmony.dll'
+        )
 
-        if ($deps) {
-          Write-Host "Copying DEPS: $($deps.FullName) -> $contentDir"
-          Copy-Item $deps.FullName -Destination $contentDir -Force
+        # Copy main project DLL and all dependencies (except KSA DLLs)
+        Write-Host "Copying DLLs from build output..."
+        Get-ChildItem -Path $outputDir.FullName -Filter "*.dll" | ForEach-Object {
+          if ($excludeDlls -notcontains $_.Name) {
+            Write-Host "  Copying: $($_.Name)"
+            Copy-Item $_.FullName -Destination $contentDir -Force
+          } else {
+            Write-Host "  Skipping (game file): $($_.Name)"
+          }
         }
 
-        # Copy additional files (mod.toml, LICENSE) with sensible fallbacks
+        # Copy deps.json file
+        $depsFile = Get-ChildItem -Path $outputDir.FullName -Filter "$project.deps.json" -File -ErrorAction SilentlyContinue
+        if ($depsFile) {
+          Write-Host "Copying deps.json"
+          Copy-Item $depsFile.FullName -Destination $contentDir -Force
+        }
+
+        # Copy mod.toml
         $modPaths = @("$project/mod.toml", "./mod.toml", "KittenRemoteControl/mod.toml")
         $copiedMod = $false
         foreach ($p in $modPaths) {
-          if (Test-Path $p) { Copy-Item $p $contentDir -Force; $copiedMod = $true; break }
+          if (Test-Path $p) {
+            Write-Host "Copying mod.toml from $p"
+            Copy-Item $p $contentDir -Force
+            $copiedMod = $true
+            break
+          }
         }
         if (-not $copiedMod) { Write-Warning "mod.toml not found in known locations." }
 
-        if (Test-Path "LICENSE") { Copy-Item "LICENSE" $contentDir -Force } else { Write-Warning "LICENSE not found." }
+        # Copy README
+        if (Test-Path "README.md") {
+          Write-Host "Copying README.md"
+          Copy-Item "README.md" $contentDir -Force
+        } else {
+          Write-Warning "README.md not found."
+        }
 
-        # Create zip
-        if (Test-Path "$packageDir.zip") { Remove-Item "$packageDir.zip" -Force }
-        Compress-Archive -Path $contentDir -DestinationPath "$packageDir.zip" -Force
-        Write-Host "Created $packageDir.zip containing:"
-        Get-ChildItem -Path $contentDir | ForEach-Object { Write-Host " - $($_.Name)" }
+        # Copy LICENSE
+        if (Test-Path "LICENSE") {
+          Write-Host "Copying LICENSE"
+          Copy-Item "LICENSE" $contentDir -Force
+        } else {
+          Write-Warning "LICENSE not found."
+        }
+
+        # Copy NOTICE.txt
+        if (Test-Path "NOTICE.txt") {
+          Write-Host "Copying NOTICE.txt"
+          Copy-Item "NOTICE.txt" $contentDir -Force
+        } else {
+          Write-Warning "NOTICE.txt not found."
+        }
+
+        # Copy OpenAPI documentation
+        if (Test-Path "openapi.yaml") {
+          Write-Host "Copying openapi.yaml"
+          Copy-Item "openapi.yaml" $contentDir -Force
+        }
+
+        # Copy licenses directory
+        if (Test-Path "licenses") {
+          Write-Host "Copying licenses directory"
+          Copy-Item "licenses" -Destination $contentDir -Recurse -Force
+        } else {
+          Write-Warning "licenses directory not found."
+        }
+
+        # Create zip - archive the content directory directly
+        $zipName = "$project.zip"
+        if (Test-Path $zipName) { Remove-Item $zipName -Force }
+        Compress-Archive -Path $contentDir -DestinationPath $zipName -Force
+
+        Write-Host ""
+        Write-Host "=========================================="
+        Write-Host "Created $zipName containing:"
+        Write-Host "=========================================="
+        Get-ChildItem -Path $contentDir -Recurse | ForEach-Object {
+          $relativePath = $_.FullName.Substring($contentDir.Length + 1)
+          if ($_.PSIsContainer) {
+            Write-Host "  [DIR]  $relativePath"
+          } else {
+            $sizeKb = [math]::Round($_.Length / 1KB, 2)
+            Write-Host "  [FILE] $relativePath ($sizeKb KB)"
+          }
+        }
+        Write-Host "=========================================="
       shell: powershell
 
     - name: Clean up SSH key
