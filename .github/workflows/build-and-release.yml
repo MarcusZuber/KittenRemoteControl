@@ -53,26 +53,30 @@ jobs:
         $project = 'KittenRemoteControl'
         Write-Host "Creating release package for $project..."
 
-        # Find the build output directory (Release build)
-        $buildDir = Get-ChildItem -Path . -Filter "Release" -Directory -Recurse -ErrorAction SilentlyContinue |
-                    Where-Object { $_.FullName -match "\\bin\\Release" -and $_.FullName -notmatch "\\obj\\" } |
-                    Select-Object -First 1
-
-        if (-not $buildDir) {
-          Write-Error "Could not find Release build directory. Ensure the project was built successfully."
-          exit 1
+        # Use direct path to build output
+        $outputDir = "$project/bin/Release/net9.0"
+        
+        if (-not (Test-Path $outputDir)) {
+          Write-Host "Build output not found at: $outputDir"
+          Write-Host "Searching for build output..."
+          
+          # Fallback: Search for the output directory
+          $foundDir = Get-ChildItem -Path . -Filter "net9.0" -Directory -Recurse -ErrorAction SilentlyContinue |
+                      Where-Object { $_.FullName -match "\\bin\\Release\\net9.0" -and $_.FullName -notmatch "\\obj\\" } |
+                      Select-Object -First 1
+          
+          if ($foundDir) {
+            $outputDir = $foundDir.FullName
+            Write-Host "Found build output at: $outputDir"
+          } else {
+            Write-Host "Available directories:"
+            Get-ChildItem -Path . -Recurse -Directory | Where-Object { $_.FullName -match "bin" } | ForEach-Object { Write-Host "  $($_.FullName)" }
+            Write-Error "Could not find build output directory. Build may have failed."
+            exit 1
+          }
+        } else {
+          Write-Host "Found build output: $outputDir"
         }
-
-        # Find the specific net9.0 directory
-        $outputDir = Get-ChildItem -Path $buildDir.FullName -Filter "net9.0" -Directory -ErrorAction SilentlyContinue |
-                     Select-Object -First 1
-
-        if (-not $outputDir) {
-          Write-Error "Could not find net9.0 output directory in $($buildDir.FullName)"
-          exit 1
-        }
-
-        Write-Host "Found build output: $($outputDir.FullName)"
 
         $contentDir = $project
 
@@ -115,20 +119,22 @@ jobs:
 
         # Copy main project DLL and all dependencies (except KSA DLLs)
         Write-Host "Copying DLLs from build output..."
-        Get-ChildItem -Path $outputDir.FullName -Filter "*.dll" | ForEach-Object {
+        Get-ChildItem -Path $outputDir -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
           if ($excludeDlls -notcontains $_.Name) {
             Write-Host "  Copying: $($_.Name)"
             Copy-Item $_.FullName -Destination $contentDir -Force
           } else {
-            Write-Host "  Skipping (game file): $($_.Name)"
+            Write-Host "  Skipping (excluded): $($_.Name)"
           }
         }
 
         # Copy deps.json file
-        $depsFile = Get-ChildItem -Path $outputDir.FullName -Filter "$project.deps.json" -File -ErrorAction SilentlyContinue
+        $depsFile = Get-ChildItem -Path $outputDir -Filter "$project.deps.json" -File -ErrorAction SilentlyContinue
         if ($depsFile) {
           Write-Host "Copying deps.json"
           Copy-Item $depsFile.FullName -Destination $contentDir -Force
+        } else {
+          Write-Warning "deps.json not found"
         }
 
         # Copy mod.toml
