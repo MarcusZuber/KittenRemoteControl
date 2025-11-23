@@ -64,9 +64,11 @@ jobs:
 
         Write-Host "Found build output: $outputDir"
 
+        # Create package/KittenRemoteControl structure
         $packageDir = "package"
+        $contentDir = "$packageDir/$project"
         if (Test-Path $packageDir) { Remove-Item -Recurse -Force $packageDir }
-        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $contentDir -Force | Out-Null
 
         $excludeDlls = @(
           'KSA.dll', 'Brutal.Core.Numerics.dll', 'Brutal.Glfw.dll',
@@ -87,9 +89,9 @@ jobs:
         Write-Host "Copying DLLs..."
         $copied = 0
         $skipped = 0
-        Get-ChildItem -Path $outputDir -Filter "*.dll" -File | ForEach-Object {
+        Get-ChildItem -Path $outputDir -Filter '*.dll' -File | ForEach-Object {
           if ($excludeDlls -notcontains $_.Name) {
-            Copy-Item $_.FullName -Destination $packageDir -Force
+            Copy-Item $_.FullName -Destination $contentDir -Force
             Write-Host "  OK $($_.Name)"
             $copied++
           } else {
@@ -100,31 +102,32 @@ jobs:
 
         $depsFile = Get-Item "$outputDir/$project.deps.json" -ErrorAction SilentlyContinue
         if ($depsFile) {
-          Copy-Item $depsFile.FullName -Destination $packageDir -Force
+          Copy-Item $depsFile.FullName -Destination $contentDir -Force
           Write-Host "OK Copied deps.json"
         }
 
         if (Test-Path "$project/mod.toml") {
-          Copy-Item "$project/mod.toml" -Destination $packageDir -Force
+          Copy-Item "$project/mod.toml" -Destination $contentDir -Force
           Write-Host "OK Copied mod.toml"
         }
 
         $docFiles = @('README.md', 'LICENSE', 'NOTICE.txt', 'openapi.yaml')
         foreach ($file in $docFiles) {
           if (Test-Path $file) {
-            Copy-Item $file -Destination $packageDir -Force
+            Copy-Item $file -Destination $contentDir -Force
             Write-Host "OK Copied $file"
           }
         }
 
         if (Test-Path 'licenses') {
-          Copy-Item 'licenses' -Destination $packageDir -Recurse -Force
+          Copy-Item 'licenses' -Destination $contentDir -Recurse -Force
           Write-Host "OK Copied licenses/"
         }
 
         Write-Host ""
+        Write-Host "Package structure: package/KittenRemoteControl/(files)"
         Write-Host "Package contents:"
-        Get-ChildItem -Path $packageDir -Recurse | ForEach-Object {
+        Get-ChildItem -Path $contentDir -Recurse | ForEach-Object {
           if (-not $_.PSIsContainer) {
             Write-Host "  $($_.Name)"
           }
