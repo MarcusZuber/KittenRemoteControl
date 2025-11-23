@@ -53,7 +53,6 @@ jobs:
         $project = 'KittenRemoteControl'
         Write-Host "Creating release package for $project..."
 
-        # Direct path to build output
         $outputDir = "$project/bin/Release/net9.0"
         
         if (-not (Test-Path $outputDir)) {
@@ -65,12 +64,10 @@ jobs:
 
         Write-Host "Found build output: $outputDir"
 
-        # Package directory - just the content, no nested folder
         $packageDir = "package"
         if (Test-Path $packageDir) { Remove-Item -Recurse -Force $packageDir }
         New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
-        # Exclusions
         $excludeDlls = @(
           'KSA.dll', 'Brutal.Core.Numerics.dll', 'Brutal.Glfw.dll',
           'Brutal.ImGui.dll', 'Brutal.ImGui.Extensions.dll',
@@ -87,14 +84,13 @@ jobs:
           'StarMap.API.dll', '0Harmony.dll'
         )
 
-        # Copy DLLs
         Write-Host "Copying DLLs..."
         $copied = 0
         $skipped = 0
         Get-ChildItem -Path $outputDir -Filter "*.dll" -File | ForEach-Object {
           if ($excludeDlls -notcontains $_.Name) {
             Copy-Item $_.FullName -Destination $packageDir -Force
-            Write-Host "  ✓ $($_.Name)"
+            Write-Host "  OK $($_.Name)"
             $copied++
           } else {
             $skipped++
@@ -102,32 +98,28 @@ jobs:
         }
         Write-Host "Copied $copied DLLs, skipped $skipped"
 
-        # Copy deps.json
         $depsFile = Get-Item "$outputDir/$project.deps.json" -ErrorAction SilentlyContinue
         if ($depsFile) {
           Copy-Item $depsFile.FullName -Destination $packageDir -Force
-          Write-Host "✓ Copied deps.json"
+          Write-Host "OK Copied deps.json"
         }
 
-        # Copy mod.toml
         if (Test-Path "$project/mod.toml") {
           Copy-Item "$project/mod.toml" -Destination $packageDir -Force
-          Write-Host "✓ Copied mod.toml"
+          Write-Host "OK Copied mod.toml"
         }
 
-        # Copy documentation
-        $docFiles = @("README.md", "LICENSE", "NOTICE.txt", "openapi.yaml")
+        $docFiles = @('README.md', 'LICENSE', 'NOTICE.txt', 'openapi.yaml')
         foreach ($file in $docFiles) {
           if (Test-Path $file) {
             Copy-Item $file -Destination $packageDir -Force
-            Write-Host "✓ Copied $file"
+            Write-Host "OK Copied $file"
           }
         }
 
-        # Copy licenses folder
-        if (Test-Path "licenses") {
-          Copy-Item "licenses" -Destination $packageDir -Recurse -Force
-          Write-Host "✓ Copied licenses/"
+        if (Test-Path 'licenses') {
+          Copy-Item 'licenses' -Destination $packageDir -Recurse -Force
+          Write-Host "OK Copied licenses/"
         }
 
         Write-Host ""
