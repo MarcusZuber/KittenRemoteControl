@@ -119,7 +119,17 @@ jobs:
 
         # Copy main project DLL and all dependencies (except KSA DLLs)
         Write-Host "Copying DLLs from build output..."
-        Get-ChildItem -Path $outputDir -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+        Write-Host "Looking in: $outputDir"
+        
+        $dllFiles = Get-ChildItem -Path $outputDir -Filter "*.dll" -File -ErrorAction SilentlyContinue
+        Write-Host "Found $($dllFiles.Count) DLL files"
+        
+        if ($dllFiles.Count -eq 0) {
+          Write-Host "No DLLs found! Listing directory contents:"
+          Get-ChildItem -Path $outputDir | ForEach-Object { Write-Host "  $($_.Name)" }
+        }
+        
+        $dllFiles | ForEach-Object {
           if ($excludeDlls -notcontains $_.Name) {
             Write-Host "  Copying: $($_.Name)"
             Copy-Item $_.FullName -Destination $contentDir -Force
@@ -188,24 +198,36 @@ jobs:
           Write-Warning "licenses directory not found."
         }
 
-        # Create zip - archive the content directory directly
+        # Create zip with proper structure: KittenRemoteControl.zip -> KittenRemoteControl/(files)
+        # We compress the folder itself to get the folder in the ZIP
         $zipName = "$project.zip"
         if (Test-Path $zipName) { Remove-Item $zipName -Force }
+        
+        Write-Host "Creating ZIP archive..."
         Compress-Archive -Path $contentDir -DestinationPath $zipName -Force
 
         Write-Host ""
         Write-Host "=========================================="
-        Write-Host "Created $zipName containing:"
+        Write-Host "Created $zipName"
+        Write-Host "Structure: $project.zip -> $project/ -> (files)"
+        Write-Host "Contents:"
         Write-Host "=========================================="
+        
+        $fileCount = 0
+        $dllCount = 0
         Get-ChildItem -Path $contentDir -Recurse | ForEach-Object {
           $relativePath = $_.FullName.Substring($contentDir.Length + 1)
           if ($_.PSIsContainer) {
             Write-Host "  [DIR]  $relativePath"
           } else {
+            $fileCount++
+            if ($_.Extension -eq ".dll") { $dllCount++ }
             $sizeKb = [math]::Round($_.Length / 1KB, 2)
             Write-Host "  [FILE] $relativePath ($sizeKb KB)"
           }
         }
+        Write-Host "=========================================="
+        Write-Host "Total: $fileCount files ($dllCount DLLs)"
         Write-Host "=========================================="
       shell: powershell
 
