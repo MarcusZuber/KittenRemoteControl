@@ -116,10 +116,11 @@ jobs:
         }
 
         # Copy documentation
-        @("README.md", "LICENSE", "NOTICE.txt", "openapi.yaml") | ForEach-Object {
-          if (Test-Path $_) {
-            Copy-Item $_ -Destination $packageDir -Force
-            Write-Host "✓ Copied $_"
+        $docFiles = @("README.md", "LICENSE", "NOTICE.txt", "openapi.yaml")
+        foreach ($file in $docFiles) {
+          if (Test-Path $file) {
+            Copy-Item $file -Destination $packageDir -Force
+            Write-Host "✓ Copied $file"
           }
         }
 
