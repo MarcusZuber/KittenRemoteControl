@@ -5,7 +5,7 @@ This directory contains the license information for all third-party dependencies
 ## Files in this directory
 
 - **LICENSE-Harmony.txt** - License for Lib.Harmony (0Harmony) v2.4.1 - MIT License
-- **LICENSE-Grapevine.txt** - License for Grapevine v5.0.2 - Apache License 2.0
+- **LICENSE-Grapevine.txt** - License for Grapevine v5.0.2 - MIT License
 - **LICENSE-Microsoft.txt** - License for Microsoft .NET Runtime and Extensions libraries - MIT License
 - **LICENSE-StarMap.txt** - License information for StarMap.API v0.3.1
 - **THIRD-PARTY-LICENSES.md** - Comprehensive overview of all licenses and dependencies
