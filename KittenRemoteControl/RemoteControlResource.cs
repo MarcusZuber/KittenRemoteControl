@@ -125,6 +125,118 @@ namespace KittenRemoteControl
             return context;
         }
 
+        // ===== Thruster endpoints =====
+
+        [RestRoute("Get", "/control/thrusters")]
+        public async Task<IHttpContext> GetThrusters(IHttpContext context)
+        {
+            try
+            {
+                // Read the combined ThrusterCommandFlags from the private inputs struct
+                var flagsObj = ManualControlHelper.GetManualControlValue<object>("ThrusterCommandFlags");
+                var flags = flagsObj is ThrusterMapFlags f ? f : ThrusterMapFlags.None;
+
+                var thrusters = Enum.GetValues<ThrusterMapFlags>()
+                    .Cast<ThrusterMapFlags>()
+                    .Where(f => f != ThrusterMapFlags.None)
+                    .ToDictionary(f => f.ToString(), f => flags.HasFlag(f));
+
+                await SendJsonAsync(context, new { thrusters });
+            }
+            catch (Exception ex)
+            {
+                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+            }
+            return context;
+        }
+
+        [RestRoute("Post", "/control/thrusters")]
+        public async Task<IHttpContext> SetThrusters(IHttpContext context)
+        {
+            try
+            {
+                var body = GetRequestBody(context);
+                JsonElement thrusterObj;
+
+                // Accept either a top-level object with a "thrusters" property or the object itself
+                if (body.Contains("\"thrusters\""))
+                {
+                    var json = JsonDocument.Parse(body);
+                    thrusterObj = json.RootElement.GetProperty("thrusters");
+                }
+                else
+                {
+                    var json = JsonDocument.Parse(body);
+                    thrusterObj = json.RootElement;
+                }
+
+                if (thrusterObj.ValueKind != JsonValueKind.Object)
+                {
+                    await SendJsonAsync(context, new { error = "Request must be a JSON object mapping thruster names to boolean/number values" }, HttpStatusCode.BadRequest);
+                    return context;
+                }
+
+                var currentObj = ManualControlHelper.GetManualControlValue<object>("ThrusterCommandFlags");
+                var current = currentObj is ThrusterMapFlags cf ? cf : ThrusterMapFlags.None;
+                var newFlags = current;
+                var unknownKeys = new System.Collections.Generic.List<string>();
+
+                foreach (var prop in thrusterObj.EnumerateObject())
+                {
+                    var name = prop.Name;
+                    if (!Enum.TryParse<ThrusterMapFlags>(name, true, out var flag))
+                    {
+                        unknownKeys.Add(name);
+                        continue;
+                    }
+
+                    var val = prop.Value;
+                    bool on;
+
+                    if (val.ValueKind == JsonValueKind.True || val.ValueKind == JsonValueKind.False)
+                    {
+                        on = val.GetBoolean();
+                    }
+                    else if (val.ValueKind == JsonValueKind.Number)
+                    {
+                        on = val.GetDouble() != 0.0;
+                    }
+                    else if (val.ValueKind == JsonValueKind.String)
+                    {
+                        var s = val.GetString();
+                        on = s == "1" || s.Equals("true", System.StringComparison.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        unknownKeys.Add(name);
+                        continue;
+                    }
+
+                    if (on) newFlags |= flag; else newFlags &= ~flag;
+                }
+
+                if (unknownKeys.Count > 0)
+                {
+                    await SendJsonAsync(context, new { error = "Unknown thruster keys", unknown = unknownKeys }, HttpStatusCode.BadRequest);
+                    return context;
+                }
+
+                ManualControlHelper.SetManualControlValue("ThrusterCommandFlags", newFlags);
+
+                var thrusters = Enum.GetValues<ThrusterMapFlags>()
+                    .Cast<ThrusterMapFlags>()
+                    .Where(f => f != ThrusterMapFlags.None)
+                    .ToDictionary(f => f.ToString(), f => newFlags.HasFlag(f));
+
+                await SendJsonAsync(context, new { success = true, thrusters });
+            }
+            catch (Exception ex)
+            {
+                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+            }
+            return context;
+        }
+
         [RestRoute("Get", "/control/referenceFrame")]
         public async Task<IHttpContext> GetReferenceFrame(IHttpContext context)
         {

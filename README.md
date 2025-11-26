@@ -194,6 +194,84 @@ curl -X PUT -H "Content-Type: application/json" -d '{"engineOn":true}' http://lo
 curl -X PUT -H "Content-Type: text/plain" -d '1' http://localhost:8080/control/engineOn
 ```
 
+#### GET /control/thrusters
+Get the current thruster command flags as a dictionary mapping thruster names to boolean (true = command on).
+
+**Response:**
+```json
+{
+  "thrusters": {
+    "RollRight": true,
+    "RollLeft": false,
+    "PitchUp": false,
+    "PitchDown": false,
+    "YawRight": false,
+    "YawLeft": false,
+    "TranslateForward": false,
+    "TranslateBackward": false,
+    "TranslateRight": false,
+    "TranslateLeft": false,
+    "TranslateDown": false,
+    "TranslateUp": false
+  }
+}
+```
+
+**cURL Example:**
+```bash
+curl http://localhost:8080/control/thrusters
+```
+
+#### POST /control/thrusters
+Set thruster command flags in batch by providing a JSON object mapping thruster enum names to boolean/number/string values. Numbers and the strings "1"/"true" (case-insensitive) are treated as true; 0 and "0"/"false" are false.
+
+Behaviour: this endpoint performs a partial update — only the keys provided in the request are changed; unspecified flags remain as they were.
+
+**Request Body (JSON with `thrusters` object):**
+```json
+{
+  "thrusters": {
+    "RollRight": true,
+    "PitchUp": 1,
+    "TranslateUp": "true",
+    "YawLeft": 0
+  }
+}
+```
+
+**Or request body can be the object itself:**
+```json
+{
+  "RollRight": true,
+  "PitchUp": 1
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "thrusters": {
+    "RollRight": true,
+    "RollLeft": false,
+    "PitchUp": true,
+    ...
+  }
+}
+```
+
+**Error Responses:**
+- Unknown thruster names → 400 with a list of unknown keys.
+```json
+{ "error": "Unknown thruster keys", "unknown": ["Foo"] }
+```
+- Invalid JSON structure → 400
+
+**cURL Example:**
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"thrusters":{"RollRight":1,"PitchUp":0}}' http://localhost:8080/control/thrusters
+```
+
 #### GET /control/referenceFrame
 Get the current navball/reference frame for the controlled vehicle.
 
@@ -646,6 +724,8 @@ Access to private game structures (`_manualControlInputs`) is achieved through r
 | `/control/throttle` | PUT | Set throttle (0.0-1.0) | `{throttle: float}` or plain | `{success: bool, throttle: float}` |
 | `/control/engineOn` | GET | Get engine state | - | `{engineOn: bool}` |
 | `/control/engineOn` | PUT | Set engine on/off | `{engineOn: bool}` or `0`/`1` | `{success: bool, engineOn: bool}` |
+| `/control/thrusters` | GET | Get current thruster commands | - | `{thrusters: {thrusterName: bool}}` |
+| `/control/thrusters` | POST | Set thruster commands (batch) | `{thrusters: {thrusterName: bool}}` or plain | `{success: bool, thrusters: {thrusterName: bool}}` |
 | `/control/referenceFrame` | GET | Get reference frame | - | `{frame: string, frameId: int}` |
 | `/control/referenceFrame` | PUT | Set reference frame | `{frame: string/int}` or plain | `{success: bool, frame: string, frameId: int}` |
 | `/control/referenceFrames` | GET | List reference frames | - | `{frames: array}` |
@@ -673,4 +753,3 @@ See [openapi.yaml](openapi.yaml) for the complete OpenAPI 3.0 specification.
 ## License
 
 MIT License
-
