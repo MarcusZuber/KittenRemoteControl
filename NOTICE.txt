@@ -1,0 +1,82 @@
+NOTICES AND INFORMATION
+=======================
+
+This file contains notices and information required by libraries that this project uses.
+
+--------------------------------------------------------------------------------
+
+Lib.Harmony (0Harmony) v2.4.1
+https://github.com/pardeike/Harmony
+Copyright (c) 2017 Andreas Pardeike
+Licensed under MIT License
+
+--------------------------------------------------------------------------------
+
+Grapevine v5.0.2
+https://github.com/scottoffen/grapevine
+Copyright (c) 2020 Scott Offen
+Licensed under Apache License 2.0
+
+--------------------------------------------------------------------------------
+
+Microsoft .NET Runtime Libraries
+https://github.com/dotnet/runtime
+Copyright (c) .NET Foundation and Contributors
+Licensed under MIT License
+
+This project uses the following .NET libraries:
+- System.Text.Json
+- System.Net.HttpListener
+- System.Net.Sockets
+- Microsoft.Extensions.Configuration (via Grapevine)
+- Microsoft.Extensions.Configuration.FileExtensions (via Grapevine)
+- Microsoft.Extensions.Logging (via Grapevine)
+- Microsoft.Extensions.Logging.Abstractions (via Grapevine)
+- Microsoft.Extensions.Logging.Console (via Grapevine)
+
+--------------------------------------------------------------------------------
+
+StarMap.API v0.3.1
+https://github.com/StarMapLoader
+Copyright (c) StarMap Contributors
+See StarMap repository for license details
+
+--------------------------------------------------------------------------------
+
+FULL LICENSE TEXTS
+
+For the full text of each license, please see the individual license files
+in the licenses/ directory:
+
+- licenses/LICENSE-Harmony.txt
+- licenses/LICENSE-Grapevine.txt
+- licenses/LICENSE-Microsoft.txt
+- licenses/LICENSE-StarMap.txt
+- licenses/THIRD-PARTY-LICENSES.md (comprehensive overview)
+
+--------------------------------------------------------------------------------
+
+PROPRIETARY GAME FILES
+
+This mod requires Kitten Space Agency to run. The following game files are
+referenced but NOT distributed with this mod:
+
+- KSA.dll
+- Brutal.Core.Numerics.dll
+- Brutal.Glfw.dll
+- Brutal.ImGui.dll
+- Brutal.ImGui.Extensions.dll
+
+These files are proprietary to Ahwoo Games and are NOT covered by any open
+source license. Users must own Kitten Space Agency to use this mod.
+
+--------------------------------------------------------------------------------
+
+NO WARRANTY
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+--------------------------------------------------------------------------------
+

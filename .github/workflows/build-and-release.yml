@@ -21,18 +21,42 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Setup SSH
+    - name: Build local KSA stub
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
-      shell: bash
+        echo "Building local KSA stub to provide KSA.dll for the build"
+        dotnet build "KSA_stub/KSA_stub.csproj" -c Release
+      shell: powershell
 
-    - name: Clone KSA DLLs
+    - name: Ensure KSA.dll is available for the main build
       run: |
-        git clone git@github.com:MarcusZuber/KSA_dlls.git KSA_dlls
-      shell: bash
+        # Try common output locations and copy the KSA.dll into KSA_dlls/KSA.dll (the main project HintPath)
+        $candidates = @(
+          "KSA_stub\bin\Release\net9.0\KSA.dll",
+          "KSA_stub\KSA_dlls\net9.0\KSA.dll",
+          "KSA_stub\..\KSA_dlls\net9.0\KSA.dll",
+          "KSA_stub\..\KSA_dlls\KSA.dll",
+          "KSA_stub\bin\Release\KSA.dll"
+        )
+
+        $found = $false
+        foreach ($p in $candidates) {
+          if (Test-Path $p) { $src = (Get-Item $p).FullName; $found = $true; break }
+        }
+
+        if (-not $found) {
+          Write-Host "Did not find KSA.dll in expected locations. Listing KSA_stub output:";
+          Get-ChildItem -Path KSA_stub -Recurse -Filter "KSA.dll" | ForEach-Object { Write-Host $_.FullName }
+          throw "KSA.dll not found after building KSA_stub"
+        }
+
+        # Ensure the KSA_dlls folder exists at repo root
+        $destDir = "KSA_dlls"
+        if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
+
+        $dest = Join-Path $destDir "KSA.dll"
+        Copy-Item -Path $src -Destination $dest -Force
+        Write-Host "Copied KSA.dll to $dest"
+      shell: powershell
 
     - name: Add StarMap GitHub Packages NuGet feed (using personal token)
       if: ${{ env.STARMAP_NUGET_TOKEN != '' }}
@@ -51,82 +75,183 @@ jobs:
     - name: Create Release Package
       run: |
         $project = 'KittenRemoteControl'
-        Write-Host "Searching repository recursively for $project.dll and $project.deps.json (excluding obj folders)..."
+        Write-Host "Creating release package for $project..."
 
-        # Find the newest DLL (exclude obj folders)
-        $dll = Get-ChildItem -Path . -Filter "$project.dll" -File -Recurse -ErrorAction SilentlyContinue |
-               Where-Object { $_.FullName -notmatch '\\obj\\' } |
-               Sort-Object LastWriteTime -Descending | Select-Object -First 1
-
-        if (-not $dll) {
-          Write-Error "Could not find $project.dll anywhere in the repository. Ensure the project was built successfully."
+        $outputDir = "$project/bin/Release/net9.0"
+        
+        if (-not (Test-Path $outputDir)) {
+          Write-Error "Build output not found at: $outputDir"
+          Write-Host "Listing directory structure:"
+          Get-ChildItem -Path . -Recurse -Directory | Where-Object { $_.Name -match "bin" } | Select-Object -First 20 | ForEach-Object { Write-Host $_.FullName }
           exit 1
         }
 
-        # Find the matching deps.json (newest)
-        $deps = Get-ChildItem -Path . -Filter "$project.deps.json" -File -Recurse -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -notmatch '\\obj\\' } |
-                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        Write-Host "Found build output: $outputDir"
 
-        if (-not $deps) {
-          Write-Warning "Could not find $project.deps.json. Continuing without it."
-        }
-
-        $packageDir = "$project`_Package"
+        # Create package/KittenRemoteControl structure
+        $packageDir = "package"
         $contentDir = "$packageDir/$project"
-
-        # Create directories
-        if (Test-Path $contentDir) { Remove-Item -Recurse -Force $contentDir }
+        if (Test-Path $packageDir) { Remove-Item -Recurse -Force $packageDir }
         New-Item -ItemType Directory -Path $contentDir -Force | Out-Null
 
-        # Copy files
-        Write-Host "Copying DLL: $($dll.FullName) -> $contentDir"
-        Copy-Item $dll.FullName -Destination $contentDir -Force
+        $excludeDlls = @(
+          'KSA.dll', 'Brutal.Core.Numerics.dll', 'Brutal.Glfw.dll',
+          'Brutal.ImGui.dll', 'Brutal.ImGui.Extensions.dll',
+          'Brutal.Core.Collections.dll', 'Brutal.Core.Common.dll',
+          'Brutal.Core.Logging.dll', 'Brutal.Core.Memory.dll',
+          'Brutal.Core.Strings.dll', 'Brutal.Fmod.dll',
+          'Brutal.Framework.dll', 'Brutal.Gli.dll',
+          'Brutal.Gli.Texture.dll', 'Brutal.GltfApi.dll',
+          'Brutal.ImGui.Abstractions.dll', 'Brutal.Ktx.dll',
+          'Brutal.Ktx.Texture.dll', 'Brutal.Native.dll',
+          'Brutal.ShaderCompiler.dll', 'Brutal.Stb.dll',
+          'Brutal.Stb.Texture.dll', 'Brutal.Texture.dll',
+          'Brutal.Vulkan.dll', 'Brutal.Vulkan.Abstractions.dll',
+          'StarMap.API.dll', '0Harmony.dll'
+        )
 
-        if ($deps) {
-          Write-Host "Copying DEPS: $($deps.FullName) -> $contentDir"
-          Copy-Item $deps.FullName -Destination $contentDir -Force
+        Write-Host "Copying DLLs..."
+        $copied = 0
+        $skipped = 0
+        Get-ChildItem -Path $outputDir -Filter '*.dll' -File | ForEach-Object {
+          if ($excludeDlls -notcontains $_.Name) {
+            Copy-Item $_.FullName -Destination $contentDir -Force
+            Write-Host "  OK $($_.Name)"
+            $copied++
+          } else {
+            $skipped++
+          }
+        }
+        Write-Host "Copied $copied DLLs, skipped $skipped"
+
+        $depsFile = Get-Item "$outputDir/$project.deps.json" -ErrorAction SilentlyContinue
+        if ($depsFile) {
+          Copy-Item $depsFile.FullName -Destination $contentDir -Force
+          Write-Host "OK Copied deps.json"
         }
 
-        # Copy additional files (mod.toml, LICENSE) with sensible fallbacks
-        $modPaths = @("$project/mod.toml", "./mod.toml", "KittenRemoteControl/mod.toml")
-        $copiedMod = $false
-        foreach ($p in $modPaths) {
-          if (Test-Path $p) { Copy-Item $p $contentDir -Force; $copiedMod = $true; break }
+        if (Test-Path "$project/mod.toml") {
+          Copy-Item "$project/mod.toml" -Destination $contentDir -Force
+          Write-Host "OK Copied mod.toml"
         }
-        if (-not $copiedMod) { Write-Warning "mod.toml not found in known locations." }
 
-        if (Test-Path "LICENSE") { Copy-Item "LICENSE" $contentDir -Force } else { Write-Warning "LICENSE not found." }
+        $docFiles = @('README.md', 'LICENSE', 'NOTICE.txt', 'openapi.yaml')
+        foreach ($file in $docFiles) {
+          if (Test-Path $file) {
+            Copy-Item $file -Destination $contentDir -Force
+            Write-Host "OK Copied $file"
+          }
+        }
 
-        # Create zip
-        if (Test-Path "$packageDir.zip") { Remove-Item "$packageDir.zip" -Force }
-        Compress-Archive -Path $contentDir -DestinationPath "$packageDir.zip" -Force
-        Write-Host "Created $packageDir.zip containing:"
-        Get-ChildItem -Path $contentDir | ForEach-Object { Write-Host " - $($_.Name)" }
-      shell: powershell
+        if (Test-Path 'licenses') {
+          Copy-Item 'licenses' -Destination $contentDir -Recurse -Force
+          Write-Host "OK Copied licenses/"
+        }
 
-    - name: Clean up SSH key
-      if: always()
-      run: |
-        rm -f ~/.ssh/id_rsa
-      shell: bash
-
-    - name: Remove cloned DLLs
-      if: always()
-      run: |
-        Remove-Item -Recurse -Force KSA_dlls -ErrorAction SilentlyContinue
+        Write-Host ""
+        Write-Host "Package structure: package/KittenRemoteControl/(files)"
+        Write-Host "Package contents:"
+        Get-ChildItem -Path $contentDir -Recurse | ForEach-Object {
+          if (-not $_.PSIsContainer) {
+            Write-Host "  $($_.Name)"
+          }
+        }
+        Write-Host ""
+        Write-Host "Package ready in: $packageDir"
       shell: powershell
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: KittenRemoteControl
-        path: KittenRemoteControl.zip
+        path: package/
+
+    - name: Create ZIP for Release
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        Compress-Archive -Path package/KittenRemoteControl -DestinationPath KittenRemoteControl.zip -Force
+        Write-Host "Created KittenRemoteControl.zip for release"
+      shell: powershell
+
+    - name: Generate Release Notes
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        $tag = "${{ github.ref_name }}"
+        $version = $tag -replace '^v', ''
+        
+        $notes = @"
+        # Kitten Remote Control $version
+        
+        ## Installation
+        
+        1. Download ``KittenRemoteControl.zip``
+        2. Extract to your game's mod directory: ``<Game>/mods/``
+        3. Launch the game - the mod will start automatically
+        
+        ## What's Included
+        
+        - Main mod DLL with REST API server
+        - All required dependencies (Grapevine + Microsoft.Extensions.*)
+        - Complete documentation (README.md, OpenAPI spec)
+        - All license files
+        
+        **Note**: Requires StarMap Mod Loader and Kitten Space Agency
+        
+        ## API Endpoints
+        
+        The REST API server starts on ``http://localhost:8080``
+        
+        ### Control
+        - GET/PUT ``/control/throttle`` - Engine throttle (0.0-1.0)
+        - GET/PUT ``/control/engineOn`` - Engine state (on/off)
+        - GET/PUT ``/control/referenceFrame`` - Navball reference frame
+        - GET ``/control/referenceFrames`` - List available frames
+        
+        ### Flight Computer
+        - GET/PUT ``/control/flightComputer/attitudeMode`` - Attitude control mode
+        - GET ``/control/flightComputer/attitudeModes`` - List available modes
+        - PUT ``/control/flightComputer/stabilization`` - Enable/disable stabilization
+        
+        ### Telemetry
+        - GET ``/telemetry/apoapsis`` - Apoapsis altitude
+        - GET ``/telemetry/periapsis`` - Periapsis altitude
+        - GET ``/telemetry/apoapsis_elevation`` - Apoapsis above surface
+        - GET ``/telemetry/periapsis_elevation`` - Periapsis above surface
+        - GET ``/telemetry/orbitalSpeed`` - Current orbital velocity
+        - GET ``/telemetry/propellantMass`` - Current propellant mass
+        - GET ``/telemetry/totalMass`` - Total vessel mass
+        - GET ``/telemetry/orbitingBody/meanRadius`` - Mean radius of orbited body
+        
+        ## Documentation
+        
+        See the included README.md for complete API documentation with examples in:
+        - PowerShell
+        - Python
+        - JavaScript
+        - C#
+        - curl
+        
+        ## Changes
+        
+        See the commit history for detailed changes in this release.
+        
+        ## Support
+        
+        For issues or questions, please open an issue on GitHub.
+        "@
+        
+        $notes | Out-File -FilePath release-notes.md -Encoding UTF8
+        Write-Host "Generated release notes"
+      shell: powershell
 
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
         files: KittenRemoteControl.zip
+        body_path: release-notes.md
+        generate_release_notes: true
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

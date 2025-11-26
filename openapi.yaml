@@ -1,0 +1,751 @@
+openapi: 3.0.3
+info:
+  title: Kitten Remote Control API
+  description: |
+    A RESTful API for remote control of spacecraft in Kitten Space Agency.
+    
+    This API allows you to control various aspects of your spacecraft including throttle, 
+    engine state, reference frames, flight computer settings, and read telemetry data.
+    
+    All endpoints accept both JSON objects and plain text values for flexibility.
+  version: 1.0.0
+  contact:
+    name: Kitten Remote Control
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local game server
+
+tags:
+  - name: Control
+    description: Spacecraft control endpoints
+  - name: Flight Computer
+    description: Flight computer configuration
+  - name: Telemetry
+    description: Read-only telemetry data
+
+paths:
+  /control/throttle:
+    get:
+      tags:
+        - Control
+      summary: Get engine throttle
+      description: Returns the current engine throttle value (0.0 to 1.0)
+      operationId: getThrottle
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  throttle:
+                    type: number
+                    format: float
+                    minimum: 0.0
+                    maximum: 1.0
+                    example: 0.75
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Control
+      summary: Set engine throttle
+      description: Sets the engine throttle value (must be between 0.0 and 1.0)
+      operationId: setThrottle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                throttle:
+                  type: number
+                  format: float
+                  minimum: 0.0
+                  maximum: 1.0
+                  example: 0.5
+          text/plain:
+            schema:
+              type: number
+              format: float
+              minimum: 0.0
+              maximum: 1.0
+              example: 0.5
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  throttle:
+                    type: number
+                    format: float
+                    example: 0.5
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/engineOn:
+    get:
+      tags:
+        - Control
+      summary: Get engine state
+      description: Returns whether the engine is on or off
+      operationId: getEngineOn
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  engineOn:
+                    type: boolean
+                    example: true
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Control
+      summary: Set engine state
+      description: Turns the engine on or off
+      operationId: setEngineOn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                engineOn:
+                  type: boolean
+                  example: true
+          text/plain:
+            schema:
+              type: string
+              enum: ['0', '1', 'true', 'false', 'True', 'False']
+              example: '1'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  engineOn:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/thrusters:
+    get:
+      tags:
+        - Control
+      summary: Get thruster command flags
+      description: Returns a dictionary mapping thruster enum names to boolean values indicating whether the command is active.
+      operationId: getThrusters
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  thrusters:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                    example:
+                      RollRight: true
+                      RollLeft: false
+                      PitchUp: false
+                      PitchDown: false
+                      YawRight: false
+                      YawLeft: false
+                      TranslateForward: false
+                      TranslateBackward: false
+                      TranslateRight: false
+                      TranslateLeft: false
+                      TranslateDown: false
+                      TranslateUp: false
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Control
+      summary: Set thruster command flags in batch
+      description: |
+        Accepts a JSON object mapping thruster enum names to boolean/number/string values. Numbers and strings '1'/'true' are treated as true; 0 and '0'/'false' are false. The operation performs a partial update — only provided keys are modified.
+      operationId: setThrusters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    thrusters:
+                      type: object
+                      additionalProperties:
+                        oneOf:
+                          - type: boolean
+                          - type: number
+                          - type: string
+                - type: object
+                  additionalProperties:
+                    oneOf:
+                      - type: boolean
+                      - type: number
+                      - type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  thrusters:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+        '400':
+          description: Invalid input or unknown thruster names
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/referenceFrame:
+    get:
+      tags:
+        - Control
+      summary: Get reference frame
+      description: Returns the current navball/reference frame
+      operationId: getReferenceFrame
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  frame:
+                    type: string
+                    example: LVLH
+                  frameId:
+                    type: integer
+                    example: 0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Control
+      summary: Set reference frame
+      description: |
+        Sets the navball/reference frame. Updates flight computer (RateHold) 
+        if in auto attitude mode.
+      operationId: setReferenceFrame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    frame:
+                      type: string
+                      example: LVLH
+                - type: object
+                  properties:
+                    frame:
+                      type: integer
+                      example: 0
+          text/plain:
+            schema:
+              type: string
+              example: LVLH
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  frame:
+                    type: string
+                    example: LVLH
+                  frameId:
+                    type: integer
+                    example: 0
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/referenceFrames:
+    get:
+      tags:
+        - Control
+      summary: List reference frames
+      description: Returns all available reference frames
+      operationId: getReferenceFrames
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  frames:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: LVLH
+                        value:
+                          type: integer
+                          example: 0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/flightComputer/attitudeMode:
+    get:
+      tags:
+        - Flight Computer
+      summary: Get attitude mode
+      description: Returns the current flight computer attitude mode
+      operationId: getAttitudeMode
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attitudeMode:
+                    type: string
+                    nullable: true
+                    example: Auto
+                  modeId:
+                    type: integer
+                    nullable: true
+                    example: 0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Flight Computer
+      summary: Set attitude mode
+      description: Sets the flight computer attitude mode
+      operationId: setAttitudeMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    mode:
+                      type: string
+                      example: Auto
+                - type: object
+                  properties:
+                    mode:
+                      type: integer
+                      example: 0
+          text/plain:
+            schema:
+              type: string
+              example: Auto
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  attitudeMode:
+                    type: string
+                    example: Auto
+                  modeId:
+                    type: integer
+                    example: 0
+        '400':
+          description: Invalid input or no vehicle controlled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/flightComputer/attitudeModes:
+    get:
+      tags:
+        - Flight Computer
+      summary: List attitude modes
+      description: Returns all available flight computer attitude modes
+      operationId: getAttitudeModes
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: Auto
+                        value:
+                          type: integer
+                          example: 0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /control/flightComputer/stabilization:
+    put:
+      tags:
+        - Flight Computer
+      summary: Set stabilization
+      description: Enables or disables spacecraft stabilization
+      operationId: setStabilization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stabilization:
+                  type: boolean
+                  example: true
+          text/plain:
+            schema:
+              type: string
+              enum: ['0', '1', 'true', 'false', 'True', 'False']
+              example: '1'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  stabilization:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid input or no vehicle controlled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/apoapsis:
+    get:
+      tags:
+        - Telemetry
+      summary: Get apoapsis
+      description: Returns the apoapsis (highest point) of the current orbit in meters
+      operationId: getApoapsis
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apoapsis:
+                    type: number
+                    format: double
+                    example: 750000.0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/periapsis:
+    get:
+      tags:
+        - Telemetry
+      summary: Get periapsis
+      description: Returns the periapsis (lowest point) of the current orbit in meters
+      operationId: getPeriapsis
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  periapsis:
+                    type: number
+                    format: double
+                    example: 250000.0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/orbitingBody/meanRadius:
+    get:
+      tags:
+        - Telemetry
+      summary: Get mean radius
+      description: Returns the mean radius of the body being orbited in meters
+      operationId: getMeanRadius
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meanRadius:
+                    type: number
+                    format: double
+                    example: 600000.0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/apoapsis_elevation:
+    get:
+      tags:
+        - Telemetry
+      summary: Get apoapsis elevation
+      description: Returns the apoapsis elevation above surface (apoapsis - mean radius) in meters
+      operationId: getApoapsisElevation
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apoapsisElevation:
+                    type: number
+                    format: double
+                    example: 150000.0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/periapsis_elevation:
+    get:
+      tags:
+        - Telemetry
+      summary: Get periapsis elevation
+      description: Returns the periapsis elevation above surface (periapsis - mean radius) in meters
+      operationId: getPeriapsisElevation
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  periapsisElevation:
+                    type: number
+                    format: double
+                    example: 80000.0
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/orbitalSpeed:
+    get:
+      tags:
+        - Telemetry
+      summary: Get orbital speed
+      description: Returns the current orbital speed of the vessel in m/s
+      operationId: getOrbitalSpeed
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orbitalSpeed:
+                    type: number
+                    format: double
+                    example: 2250.5
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/propellantMass:
+    get:
+      tags:
+        - Telemetry
+      summary: Get propellant mass
+      description: Returns the current propellant mass of the vessel in kg
+      operationId: getPropellantMass
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  propellantMass:
+                    type: number
+                    format: double
+                    example: 1500.25
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /telemetry/totalMass:
+    get:
+      tags:
+        - Telemetry
+      summary: Get total mass
+      description: Returns the total mass of the vessel in kg
+      operationId: getTotalMass
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalMass:
+                    type: number
+                    format: double
+                    example: 5000.75
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Throttle must be between 0.0 and 1.0, got 1.5"
+      required:
+        - error
+
