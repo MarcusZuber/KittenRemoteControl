@@ -1,23 +1,8 @@
-# Prebuilt KittenRemoteControl (drop-in)
+# Verified prebuilt runtime
 
-This folder contains a **prebuilt** copy of the mod so you can install it without building.
+The files in KittenRemoteControl/ are built against actual installed KSA and StarMap assemblies.
+build-info.json records their hashes, source fingerprint and version. They are inputs to package-release.ps1,
+not a complete player package: run that script to include Houston, docs, licenses and Borea metadata.
 
-## Install
-Copy the `KittenRemoteControl` folder here into your game's mod directory, e.g.:
-
-```
-<Game>/Content/KittenRemoteControl/
-```
-
-Contents:
-- `KittenRemoteControl.dll` — the mod
-- `KittenRemoteControl.deps.json`
-- `mod.toml`
-
-`0Harmony.dll`, `StarMap.API.dll` and the game's own DLLs are provided by the StarMap loader / game
-at runtime, so they are intentionally **not** included here.
-
-## Build info
-- Target: **net9.0** (binds against the game's bundled runtime under Wine/CrossOver).
-- Rebuild from source with `dotnet build KittenRemoteControl/KittenRemoteControl.csproj -c Release`
-  (see the top-level README). This binary may lag behind `main`; rebuild if in doubt.
+For player installation use the versioned ZIP from artifacts/ or GitHub Releases. See ../RELEASE-PACKAGE.md.
+Rebuild with ../build-package.ps1 -RefreshPrebuilt when source changes. Do not release stub builds.

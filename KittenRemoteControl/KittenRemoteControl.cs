@@ -127,7 +127,7 @@ namespace KittenRemoteControl
         }
 
         [StarMapImmediateLoad]
-        public void OnImmediatLoad()
+        public void OnImmediatLoad(KSA.Mod definingMod)
         {
         }
 

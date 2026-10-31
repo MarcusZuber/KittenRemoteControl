@@ -1,0 +1,13 @@
+{
+    "version":  "0.1.0-borea.1",
+    "targetFramework":  "net10.0",
+    "sourceSha256":  "dd039fa4c1ff0cc2b9d68d9b17e39d5f6b72262a47b2cebe7066d62f1dcbce75",
+    "gameAssemblyVersion":  "2026.10.25.5707",
+    "starMapApiVersion":  "0.4.8.0",
+    "sdk":  "10.0.403",
+    "files":  {
+                  "KittenRemoteControl.dll":  "3f0c601bebf35d00307ef89b64703d05b3f341a2366ae3e4c4cf6986c24cfb28",
+                  "KittenRemoteControl.deps.json":  "1b6de6b391fb0dd76dd862c8fa66cf95aa874087d925602ade97256eae66113e",
+                  "mod.toml":  "906de2f87a81803f1be06c23d3d1e346a7eebfe95338b3b6972358af773e9efc"
+              }
+}

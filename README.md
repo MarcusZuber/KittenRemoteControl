@@ -29,76 +29,37 @@ Jump to: [Telemachus datalink](#telemachus-datalink-proof-of-concept) ·
 [In-game window](#in-game-status-window) ·
 [REST API](#protocol)
 
-## Installation
+## Installation with Borea
 
-### Prebuilt DLL (quickest)
+Prepared prerelease: **0.1.0-borea.1**, tested with **KSA 2026.10.25.5707** and **StarMap 0.4.8** on Windows.
 
-Grab the prebuilt mod straight from the repo: [`dist/KittenRemoteControl/`](dist/KittenRemoteControl)
-— the [**`KittenRemoteControl.dll`**](dist/KittenRemoteControl/KittenRemoteControl.dll) plus its
-`deps.json` and `mod.toml`. Copy that `KittenRemoteControl` folder into your game's mod directory
-(e.g. `<Game>/Content/KittenRemoteControl/`) and launch. `0Harmony.dll` / `StarMap.API.dll` and the
-game DLLs are provided by the StarMap loader at runtime, so they're not included.
+1. Download the versioned mod ZIP from [GitHub Releases](https://github.com/attilastrba/KittenRemoteControl/releases), or build it locally as below.
+2. Close the game. In Borea open your instance's mods folder and extract the ZIP's single `KittenRemoteControl` folder there, replacing the previous installation.
+3. Enable `KittenRemoteControl` in the instance manifest, launch through Borea, and start the simulation. See [release installation details](RELEASE-PACKAGE.md) for the manifest entry.
+4. Check the in-game connection window or http://localhost:8080/telemetry/totalMass.
 
-### From GitHub Releases (Recommended)
+### Houston quick start
 
-1. **Download the latest release** from the [Releases page](https://github.com/attilastrba/KittenRemoteControl/releases)
-2. **Extract the ZIP file** to your game's mod directory:
-   ```
-   <Game Directory>/mods/KittenRemoteControl/
-   ```
-   Example:
-   ```
-   C:\Program Files\Kitten Space Agency\mods\KittenRemoteControl\
-   ```
-3. **Launch the game** - StarMap mod loader will automatically load the mod
-4. **Check the console** for the message: "Remote Control REST Server started successfully on http://localhost:8080"
+Open the installed mod's `frontend` folder, double-click **start-houston.cmd**, and visit **http://localhost:8000/houston.html**. Keep the server window open. Use host `localhost` and datalink port `8085`. Python 3 is needed only for this optional web server.
 
-### Manual Installation
+Alternatively, run `python3 -m http.server 8000` **from the frontend folder**. Running it from the repository root serves Houston at `/frontend/houston.html` instead. Port 8000 hosts the dashboard; the mod does not host dashboard files on port 8080.
 
-If you want to build from source:
+### Build from source
 
-1. Clone the repository
-2. Ensure you have the KSA DLLs in the `KSA_dlls` directory (see [Development](#development))
-3. Build the project:
-   ```bash
-   dotnet build -c Release
-   ```
-4. Copy the contents of `bin/Release/net9.0/` to your game's mod directory (no external server DLLs are required)
+Install a .NET 10 SDK; full Visual Studio is unnecessary. Use actual installed game and loader assemblies:
 
-### Verification
+```powershell
+.\build-package.ps1 -GamePath 'C:\Program Files\Ahwoo\Games\Kitten Space Agency' -StarMapPath "$env:LOCALAPPDATA\Borea\Loaders\StarMap" -RefreshPrebuilt
+```
 
-To verify the installation:
-1. Launch Kitten Space Agency
-2. Open a browser and navigate to: http://localhost:8080/telemetry/totalMass
-3. You should see a JSON response with the current vessel's mass
+The versioned ZIP and SHA-256 checksum are written to `artifacts/`. It includes the mod, Houston and its startup helper, documentation and license references. Game/loader DLLs and obsolete dependencies are excluded. See [RELEASE-PACKAGE.md](RELEASE-PACKAGE.md) for packaging and [release/RELEASING.md](release/RELEASING.md) for the later Borea catalogue submission.
 
-## What's Included
+### Requirements and compatibility
 
-The release package includes:
-- ✅ Main mod DLL (KittenRemoteControl.dll)
-- ✅ All required dependencies (Harmony)
-- ✅ Complete documentation (README, OpenAPI spec)
-- ✅ All license files
-
-**Note**: Kitten Space Agency game files are NOT included. You must own the game to use this mod.
-
-For a complete list of included files, see [RELEASE-PACKAGE.md](RELEASE-PACKAGE.md).
-
-## Requirements
-
-- **Kitten Space Agency** (the game)
-- **StarMap Mod Loader** v0.3.1 or higher
-- **.NET 9.0 Runtime** (usually included with the game)
-
-## Uninstallation
-
-To remove the mod:
-1. Delete the `KittenRemoteControl` folder from your game's mods directory
-2. Restart the game
-
-## Installation according to this explanation
-
-See: https://forums.ahwoo.com/threads/how-to-use-starmap-mod-loader.398/#post-2113
+- KSA 2026.10.25.5707 and StarMap API 0.4.8 are the tested baseline; the game uses .NET 10.
+- Python 3 is optional for serving Houston, not required by the mod.
+- The TCP/Wine implementation is preserved, but Wine/CrossOver and hardware controllers were not retested in this prerelease session.
+- REST routes and response structures are retained from this branch.
 
 ## Telemachus datalink (proof of concept)
 
@@ -811,11 +772,11 @@ Common error scenarios:
 
 ### Build
 ```bash
-dotnet build -c Release
+.\build-package.ps1 -GamePath <installed-game-directory> -StarMapPath <installed-loader-directory>
 ```
 
 ### Deployment
-The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copied to the game's mod directory (no external server dependencies are required).
+Use the versioned ZIP in `artifacts/`, which includes the frontend and metadata. Do not copy stale `bin/` or legacy `dist/` files without running the release packager.
 
 ## Features
 
@@ -832,7 +793,7 @@ The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copi
 ## Technical Details
 
 The server uses a built-in `TcpListener`-based HTTP/1.1 server (see `TcpHttpServer.cs`):
-- Port: 8080 (bound to 127.0.0.1 / localhost)
+- Ports: 8080 (REST) and 8085 (Telemachus), bound to all interfaces
 - Protocol: HTTP/1.1
 - Format: JSON (with fallback to plain text for simple values)
 - Encoding: UTF-8

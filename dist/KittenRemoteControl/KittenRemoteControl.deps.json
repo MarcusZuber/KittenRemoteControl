@@ -1,53 +1,21 @@
 {
   "runtimeTarget": {
-    "name": ".NETCoreApp,Version=v9.0",
+    "name": ".NETCoreApp,Version=v10.0",
     "signature": ""
   },
   "compilationOptions": {},
   "targets": {
-    ".NETCoreApp,Version=v9.0": {
-      "KittenRemoteControl/1.0.0": {
-        "dependencies": {
-          "Lib.Harmony": "2.4.1",
-          "KSA": "1.0.0.0"
-        },
+    ".NETCoreApp,Version=v10.0": {
+      "KittenRemoteControl/0.1.0-borea.1": {
         "runtime": {
           "KittenRemoteControl.dll": {}
-        }
-      },
-      "Lib.Harmony/2.4.1": {
-        "runtime": {
-          "lib/net9.0/0Harmony.dll": {
-            "assemblyVersion": "2.4.1.0",
-            "fileVersion": "2.4.1.0"
-          }
-        }
-      },
-      "KSA/1.0.0.0": {
-        "runtime": {
-          "KSA.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.0"
-          }
         }
       }
     }
   },
   "libraries": {
-    "KittenRemoteControl/1.0.0": {
+    "KittenRemoteControl/0.1.0-borea.1": {
       "type": "project",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "Lib.Harmony/2.4.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-iLTZi/kKKB18jYEIwReZSx2xXyVUh4J1swReMgvYBBBn4tzA1Nd0PJlVyntY5BDdSiXSxzmvjc/3OYfFs0YwFg==",
-      "path": "lib.harmony/2.4.1",
-      "hashPath": "lib.harmony.2.4.1.nupkg.sha512"
-    },
-    "KSA/1.0.0.0": {
-      "type": "reference",
       "serviceable": false,
       "sha512": ""
     }

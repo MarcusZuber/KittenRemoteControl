@@ -11,3 +11,8 @@ KSA_dlls/
 # IDE / tooling
 .vs/
 *.user
+
+# Generated release work and archives
+artifacts/
+package/
+*_Test/
