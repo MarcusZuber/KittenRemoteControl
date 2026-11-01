@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" fill="none">
+  <defs>
+    <radialGradient id="glass" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#33465a"/>
+      <stop offset="60%" stop-color="#122031"/>
+      <stop offset="100%" stop-color="#0a1017"/>
+    </radialGradient>
+    <linearGradient id="suit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4f7fa"/>
+      <stop offset="100%" stop-color="#cdd5dc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- backpack -->
+  <rect x="72" y="158" width="96" height="96" rx="18" fill="#b9c1c9"/>
+  <!-- arms -->
+  <rect x="48" y="170" width="34" height="80" rx="17" fill="url(#suit)"/>
+  <rect x="158" y="170" width="34" height="80" rx="17" fill="url(#suit)"/>
+  <!-- paws -->
+  <circle cx="65" cy="250" r="16" fill="#ffffff"/>
+  <circle cx="175" cy="250" r="16" fill="#ffffff"/>
+  <!-- torso -->
+  <rect x="80" y="160" width="80" height="112" rx="28" fill="url(#suit)"/>
+  <!-- chest control panel -->
+  <rect x="97" y="188" width="46" height="36" rx="7" fill="#1b2026"/>
+  <circle cx="108" cy="199" r="4" fill="#57c7ff"/>
+  <circle cx="120" cy="199" r="4" fill="#38d16a"/>
+  <circle cx="132" cy="199" r="4" fill="#ff5252"/>
+  <rect x="104" y="210" width="32" height="6" rx="3" fill="#3a434b"/>
+  <!-- collar -->
+  <ellipse cx="120" cy="162" rx="54" ry="16" fill="#e6ebef"/>
+
+  <!-- helmet interior -->
+  <circle cx="120" cy="100" r="66" fill="url(#glass)"/>
+
+  <!-- cat ears -->
+  <path d="M96 74 L86 40 L118 66 Z" fill="#eef1f4"/>
+  <path d="M144 74 L154 40 L122 66 Z" fill="#eef1f4"/>
+  <path d="M99 70 L93 49 L112 66 Z" fill="#f6aebf"/>
+  <path d="M141 70 L147 49 L128 66 Z" fill="#f6aebf"/>
+  <!-- cat head -->
+  <circle cx="120" cy="106" r="42" fill="#eef1f4"/>
+  <!-- cheeks -->
+  <circle cx="98" cy="116" r="9" fill="#f9c6d2" opacity="0.7"/>
+  <circle cx="142" cy="116" r="9" fill="#f9c6d2" opacity="0.7"/>
+  <!-- eyes -->
+  <ellipse cx="106" cy="104" rx="6.5" ry="9.5" fill="#232c35"/>
+  <ellipse cx="134" cy="104" rx="6.5" ry="9.5" fill="#232c35"/>
+  <circle cx="108" cy="100" r="2.2" fill="#ffffff"/>
+  <circle cx="136" cy="100" r="2.2" fill="#ffffff"/>
+  <!-- nose -->
+  <path d="M120 116 L114.5 121 L125.5 121 Z" fill="#ef7f9a"/>
+  <!-- mouth -->
+  <path d="M120 121 v5 M120 126 q-6 5 -11 1 M120 126 q6 5 11 1"
+        stroke="#8a929a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <!-- whiskers -->
+  <path d="M92 110 h-22 M94 118 h-22 M148 110 h22 M146 118 h22"
+        stroke="#c3ccd3" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- helmet rim + reflection -->
+  <circle cx="120" cy="100" r="66" stroke="#ffffff" stroke-width="6" opacity="0.9"/>
+  <path d="M78 78 A66 66 0 0 1 132 44" stroke="#ffffff" stroke-width="7"
+        stroke-linecap="round" opacity="0.35" fill="none"/>
+</svg>

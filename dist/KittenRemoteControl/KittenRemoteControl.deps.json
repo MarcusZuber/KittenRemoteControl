@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "KittenRemoteControl/0.1.0-borea.2": {
+        "runtime": {
+          "KittenRemoteControl.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "KittenRemoteControl/0.1.0-borea.2": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

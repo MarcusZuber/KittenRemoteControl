@@ -1,0 +1,4 @@
+name = "KittenRemoteControl"
+
+[StarMap]
+EntryAssembly = "KittenRemoteControl"

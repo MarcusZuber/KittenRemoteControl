@@ -1,0 +1,153 @@
+:root {
+  --bg: #05070a;
+  --panel-1: #24282d;
+  --panel-2: #0e1013;
+  --reel-lit: #e9edf1;
+  --reel-lit-2: #b9c0c6;
+  --reel-shadow: rgba(0,0,0,.55);
+  --ink: #14181c;
+  --label: #9aa4ad;
+  --unit-1: #f2f4f6;
+  --unit-2: #c2cad0;
+  --accent: #57c7ff;
+  --ok: #38d16a;
+  --bad: #ff5252;
+  --font: "SF Mono", "Roboto Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(1200px 800px at 50% -10%, #0d1319 0%, var(--bg) 70%);
+  color: #cdd5dc;
+  font-family: var(--font);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 16px 60px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* floating astronaut-cat mascot in the background */
+body::before {
+  content: "";
+  position: fixed;
+  top: 50%; right: 4vw;
+  transform: translateY(-50%);
+  width: min(300px, 26vw);
+  aspect-ratio: 240 / 320;
+  background: url("astronaut-cat.svg") center / contain no-repeat;
+  filter: drop-shadow(0 12px 30px rgba(0,0,0,.55));
+  z-index: -1;
+  pointer-events: none;
+  animation: floaty 6s ease-in-out infinite;
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(-50%); }
+  50%      { transform: translateY(calc(-50% - 16px)); }
+}
+/* hide on narrow windows so it never overlaps the gauges */
+@media (max-width: 1024px) { body::before { display: none; } }
+
+header { text-align: center; margin-bottom: 22px; }
+header h1 {
+  font-size: 15px; font-weight: 600; letter-spacing: .32em; margin: 0 0 4px;
+  color: #dfe6ec; text-transform: uppercase;
+}
+header .sub { font-size: 11px; letter-spacing: .18em; color: var(--label); }
+
+/* config bar */
+.config {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 26px; font-size: 12px; color: var(--label);
+}
+.config input {
+  background: #10151a; border: 1px solid #2a323b; border-radius: 6px; color: #dfe6ec;
+  padding: 6px 9px; font-family: var(--font); font-size: 12px; width: 210px;
+}
+.config input.small { width: 70px; }
+.status { display: flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: .1em; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad);
+  box-shadow: 0 0 8px var(--bad); transition: background .3s, box-shadow .3s; }
+.status.live .dot { background: var(--ok); box-shadow: 0 0 9px var(--ok); }
+
+/* gauge panel — the KSA-style brushed frame */
+.stack { display: flex; flex-direction: column; gap: 20px; width: min(560px, 96vw); }
+.gauge {
+  position: relative;
+  background: linear-gradient(180deg, var(--panel-1) 0%, #16191d 55%, var(--panel-2) 100%);
+  border-radius: 14px;
+  padding: 14px 18px 16px;
+  border: 1px solid #000;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 24px rgba(0,0,0,.55);
+}
+/* corner screws */
+.gauge::before, .gauge::after,
+.gauge > .screw-l, .gauge > .screw-r {
+  content: ""; position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #6a7178, #23272b 70%, #0c0e10);
+  box-shadow: 0 1px 1px rgba(0,0,0,.6);
+}
+.gauge::before { top: 9px; left: 9px; }
+.gauge::after  { top: 9px; right: 9px; }
+.gauge > .screw-l { bottom: 9px; left: 9px; }
+.gauge > .screw-r { bottom: 9px; right: 9px; }
+
+.gauge .label {
+  text-align: center; font-size: 12px; letter-spacing: .28em; color: var(--label);
+  text-transform: uppercase; margin-bottom: 9px;
+}
+
+.readout { display: flex; justify-content: center; align-items: stretch; gap: 3px; }
+
+/* a single rolling digit reel */
+.reel {
+  width: 34px; height: 52px; overflow: hidden; position: relative;
+  background: linear-gradient(180deg, var(--reel-lit) 0%, #fff 18%, var(--reel-lit-2) 82%, #8f979e 100%);
+  border-radius: 3px;
+  box-shadow: inset 0 6px 8px -4px var(--reel-shadow), inset 0 -6px 8px -4px var(--reel-shadow),
+              0 1px 0 rgba(255,255,255,.15);
+}
+.reel + .reel { margin-left: 2px; }
+.reel .strip { display: flex; flex-direction: column;
+  transition: transform .45s cubic-bezier(.22,1,.36,1); }
+.reel .strip span {
+  height: 52px; display: flex; align-items: center; justify-content: center;
+  font-size: 34px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.sep { display: flex; align-items: center; justify-content: center;
+  font-size: 34px; font-weight: 700; color: var(--reel-lit); width: 14px; }
+
+.unit {
+  display: flex; align-items: center; justify-content: center; margin-left: 4px;
+  padding: 0 10px; min-width: 46px; border-radius: 3px;
+  font-size: 20px; font-weight: 700; letter-spacing: .04em; color: var(--ink);
+  background: linear-gradient(180deg, var(--unit-1), var(--unit-2));
+  box-shadow: inset 0 6px 8px -4px var(--reel-shadow), inset 0 -6px 8px -4px var(--reel-shadow);
+}
+
+/* delta-v radial gauge + numeric readout */
+.dv-row { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 4px 0 2px; }
+.arc-wrap { position: relative; width: 120px; height: 120px; flex: 0 0 auto; }
+.arc { width: 120px; height: 120px; display: block; }
+.arc-track { fill: none; stroke: #1b2127; stroke-width: 10; stroke-linecap: round; }
+.arc-val {
+  fill: none; stroke: var(--ok); stroke-width: 10; stroke-linecap: round;
+  transition: stroke-dasharray .45s cubic-bezier(.22,1,.36,1), stroke .3s;
+  filter: drop-shadow(0 0 5px rgba(56,209,106,.4));
+}
+.arc-center {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 27px; font-weight: 700; color: #eef2f5; font-variant-numeric: tabular-nums;
+}
+.arc-center small { font-size: 12px; color: var(--label); margin: 6px 0 0 2px; align-self: flex-start; }
+.dv-num { min-width: 150px; }
+.dv-big { font-size: 30px; font-weight: 700; color: #eef2f5; font-variant-numeric: tabular-nums; }
+.dv-big small { font-size: 13px; color: var(--label); margin-left: 6px; font-weight: 600; }
+.dv-sub { font-size: 13px; color: var(--label); margin-top: 3px; }
+.dv-kmh { font-size: 12px; color: #7f8a93; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.dv-kmh span { color: #aeb7bf; font-weight: 600; }
+.dv-total { font-size: 11px; letter-spacing: .14em; color: #7f8a93; margin-top: 12px; }
+.dv-total span { color: #cdd5dc; font-weight: 700; }
+
+footer { margin-top: 26px; font-size: 11px; color: #56606a; letter-spacing: .08em; text-align: center; }
+footer .err { color: var(--bad); }

@@ -1,60 +1,74 @@
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
-using Grapevine;
 using KSA;
 
 namespace KittenRemoteControl
 {
     /// <summary>
-    /// REST API endpoints for remote control of the spacecraft
+    /// REST API endpoints for remote control of the spacecraft.
+    /// Registers its routes on a <see cref="TcpHttpServer"/> (no HttpListener dependency).
     /// </summary>
-    [RestResource]
     public class RemoteControlResource
     {
-        // Helper method to send JSON response
-        private async Task SendJsonAsync(IHttpContext context, object data, HttpStatusCode? statusCode = null)
+        /// <summary>Registers every control and telemetry route on the given server.</summary>
+        public void RegisterRoutes(TcpHttpServer server)
         {
-            context.Response.StatusCode = statusCode ?? HttpStatusCode.Ok;
-            var json = JsonSerializer.Serialize(data);
-            await context.Response.SendResponseAsync(json);
+            // ===== Control =====
+            server.MapGet("/control/throttle", GetThrottle);
+            server.MapPut("/control/throttle", SetThrottle);
+            server.MapGet("/control/engineOn", GetEngineOn);
+            server.MapPut("/control/engineOn", SetEngineOn);
+            server.MapGet("/control/thrusters", GetThrusters);
+            server.MapPost("/control/thrusters", SetThrusters);
+            server.MapGet("/control/referenceFrame", GetReferenceFrame);
+            server.MapPut("/control/referenceFrame", SetReferenceFrame);
+            server.MapGet("/control/referenceFrames", GetReferenceFrames);
+
+            // ===== Flight Computer =====
+            server.MapGet("/control/flightComputer/attitudeMode", GetAttitudeMode);
+            server.MapPut("/control/flightComputer/attitudeMode", SetAttitudeMode);
+            server.MapGet("/control/flightComputer/attitudeModes", GetAttitudeModes);
+            server.MapPut("/control/flightComputer/stabilization", SetStabilization);
+
+            // ===== Telemetry =====
+            server.MapGet("/telemetry/apoapsis", GetApoapsis);
+            server.MapGet("/telemetry/periapsis", GetPeriapsis);
+            server.MapGet("/telemetry/orbitingBody/meanRadius", GetMeanRadius);
+            server.MapGet("/telemetry/apoapsis_elevation", GetApoapsisElevation);
+            server.MapGet("/telemetry/periapsis_elevation", GetPeriapsisElevation);
+            server.MapGet("/telemetry/orbitalSpeed", GetOrbitalSpeed);
+            server.MapGet("/telemetry/propellantMass", GetPropellantMass);
+            server.MapGet("/telemetry/totalMass", GetTotalMass);
         }
 
-        // Helper method to read request body
-        private string GetRequestBody(IHttpContext context)
-        {
-            using var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
-            return reader.ReadToEnd();
-        }
+        // Helper to build a JSON response.
+        private static HttpResponse Json(object data, int statusCode = 200)
+            => new() { StatusCode = statusCode, Body = JsonSerializer.Serialize(data) };
 
         // ===== Control Endpoints =====
 
-        [RestRoute("Get", "/control/throttle")]
-        public async Task<IHttpContext> GetThrottle(IHttpContext context)
+        private HttpResponse GetThrottle(HttpRequest request)
         {
             try
             {
                 var throttle = ManualControlHelper.GetManualControlValue<float>("EngineThrottle");
-                await SendJsonAsync(context, new { throttle });
+                return Json(new { throttle });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Put", "/control/throttle")]
-        public async Task<IHttpContext> SetThrottle(IHttpContext context)
+        private HttpResponse SetThrottle(HttpRequest request)
         {
             try
             {
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 float throttle;
 
-                // Try to parse as JSON object with "throttle" property, or as plain number
+                // Try to parse as JSON object with "throttle" property, or as plain number.
                 if (body.Contains("throttle"))
                 {
                     var json = JsonDocument.Parse(body);
@@ -67,44 +81,39 @@ namespace KittenRemoteControl
 
                 if (throttle is < 0.0f or > 1.0f)
                 {
-                    await SendJsonAsync(context, new { error = $"Throttle must be between 0.0 and 1.0, got {throttle}" }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = $"Throttle must be between 0.0 and 1.0, got {throttle}" }, 400);
                 }
 
                 ManualControlHelper.SetManualControlValue("EngineThrottle", throttle);
-                await SendJsonAsync(context, new { success = true, throttle });
+                return Json(new { success = true, throttle });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/control/engineOn")]
-        public async Task<IHttpContext> GetEngineOn(IHttpContext context)
+        private HttpResponse GetEngineOn(HttpRequest request)
         {
             try
             {
                 var engineOn = ManualControlHelper.GetManualControlValue<bool>("EngineOn");
-                await SendJsonAsync(context, new { engineOn });
+                return Json(new { engineOn });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Put", "/control/engineOn")]
-        public async Task<IHttpContext> SetEngineOn(IHttpContext context)
+        private HttpResponse SetEngineOn(HttpRequest request)
         {
             try
             {
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 bool engineOn;
 
-                // Try to parse as JSON object with "engineOn" property, or as plain boolean/number
+                // Try to parse as JSON object with "engineOn" property, or as plain boolean/number.
                 if (body.Contains("engineOn"))
                 {
                     var json = JsonDocument.Parse(body);
@@ -116,49 +125,45 @@ namespace KittenRemoteControl
                 }
 
                 ManualControlHelper.SetManualControlValue("EngineOn", engineOn);
-                await SendJsonAsync(context, new { success = true, engineOn });
+                return Json(new { success = true, engineOn });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
         // ===== Thruster endpoints =====
 
-        [RestRoute("Get", "/control/thrusters")]
-        public async Task<IHttpContext> GetThrusters(IHttpContext context)
+        private HttpResponse GetThrusters(HttpRequest request)
         {
             try
             {
-                // Read the combined ThrusterCommandFlags from the private inputs struct
+                // Read the combined ThrusterCommandFlags from the private inputs struct.
                 var flagsObj = ManualControlHelper.GetManualControlValue<object>("ThrusterCommandFlags");
                 var flags = flagsObj is ThrusterMapFlags f ? f : ThrusterMapFlags.None;
 
                 var thrusters = Enum.GetValues<ThrusterMapFlags>()
                     .Cast<ThrusterMapFlags>()
-                    .Where(f => f != ThrusterMapFlags.None)
-                    .ToDictionary(f => f.ToString(), f => flags.HasFlag(f));
+                    .Where(x => x != ThrusterMapFlags.None)
+                    .ToDictionary(x => x.ToString(), x => flags.HasFlag(x));
 
-                await SendJsonAsync(context, new { thrusters });
+                return Json(new { thrusters });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Post", "/control/thrusters")]
-        public async Task<IHttpContext> SetThrusters(IHttpContext context)
+        private HttpResponse SetThrusters(HttpRequest request)
         {
             try
             {
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 JsonElement thrusterObj;
 
-                // Accept either a top-level object with a "thrusters" property or the object itself
+                // Accept either a top-level object with a "thrusters" property or the object itself.
                 if (body.Contains("\"thrusters\""))
                 {
                     var json = JsonDocument.Parse(body);
@@ -172,8 +177,7 @@ namespace KittenRemoteControl
 
                 if (thrusterObj.ValueKind != JsonValueKind.Object)
                 {
-                    await SendJsonAsync(context, new { error = "Request must be a JSON object mapping thruster names to boolean/number values" }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = "Request must be a JSON object mapping thruster names to boolean/number values" }, 400);
                 }
 
                 var currentObj = ManualControlHelper.GetManualControlValue<object>("ThrusterCommandFlags");
@@ -204,7 +208,7 @@ namespace KittenRemoteControl
                     else if (val.ValueKind == JsonValueKind.String)
                     {
                         var s = val.GetString();
-                        on = s == "1" || s.Equals("true", System.StringComparison.OrdinalIgnoreCase);
+                        on = s == "1" || s!.Equals("true", StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -217,69 +221,62 @@ namespace KittenRemoteControl
 
                 if (unknownKeys.Count > 0)
                 {
-                    await SendJsonAsync(context, new { error = "Unknown thruster keys", unknown = unknownKeys }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = "Unknown thruster keys", unknown = unknownKeys }, 400);
                 }
 
                 ManualControlHelper.SetManualControlValue("ThrusterCommandFlags", newFlags);
 
                 var thrusters = Enum.GetValues<ThrusterMapFlags>()
                     .Cast<ThrusterMapFlags>()
-                    .Where(f => f != ThrusterMapFlags.None)
-                    .ToDictionary(f => f.ToString(), f => newFlags.HasFlag(f));
+                    .Where(x => x != ThrusterMapFlags.None)
+                    .ToDictionary(x => x.ToString(), x => newFlags.HasFlag(x));
 
-                await SendJsonAsync(context, new { success = true, thrusters });
+                return Json(new { success = true, thrusters });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/control/referenceFrame")]
-        public async Task<IHttpContext> GetReferenceFrame(IHttpContext context)
+        private HttpResponse GetReferenceFrame(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 if (vehicle == null)
                 {
-                    await SendJsonAsync(context, new { frame = "None", frameId = -1 });
-                    return context;
+                    return Json(new { frame = "None", frameId = -1 });
                 }
 
                 var frame = vehicle.NavBallData.Frame;
-                await SendJsonAsync(context, new { frame = frame.ToString(), frameId = (int)frame });
+                return Json(new { frame = frame.ToString(), frameId = (int)frame });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Put", "/control/referenceFrame")]
-        public async Task<IHttpContext> SetReferenceFrame(IHttpContext context)
+        private HttpResponse SetReferenceFrame(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 if (vehicle == null)
                 {
-                    await SendJsonAsync(context, new { error = "No vehicle controlled" }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = "No vehicle controlled" }, 400);
                 }
 
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 VehicleReferenceFrame frame;
 
-                // Try to parse as JSON object with "frame" property, or as plain string/number
+                // Try to parse as JSON object with "frame" property, or as plain string/number.
                 if (body.Contains("frame"))
                 {
                     var json = JsonDocument.Parse(body);
                     var frameValue = json.RootElement.GetProperty("frame");
-                    
+
                     if (frameValue.ValueKind == JsonValueKind.Number)
                     {
                         frame = (VehicleReferenceFrame)frameValue.GetInt32();
@@ -302,71 +299,64 @@ namespace KittenRemoteControl
                 if (vehicle.FlightComputer.AttitudeMode == FlightComputerAttitudeMode.Auto)
                     vehicle.FlightComputer.RateHold(frame);
 
-                await SendJsonAsync(context, new { success = true, frame = frame.ToString(), frameId = (int)frame });
+                return Json(new { success = true, frame = frame.ToString(), frameId = (int)frame });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/control/referenceFrames")]
-        public async Task<IHttpContext> GetReferenceFrames(IHttpContext context)
+        private HttpResponse GetReferenceFrames(HttpRequest request)
         {
             try
             {
                 var names = Enum.GetNames<VehicleReferenceFrame>();
                 var values = Enum.GetValues<VehicleReferenceFrame>();
                 var frames = names.Select((name, i) => new { name, value = (int)values[i] }).ToArray();
-                await SendJsonAsync(context, new { frames });
+                return Json(new { frames });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
         // ===== Flight Computer Endpoints =====
 
-        [RestRoute("Get", "/control/flightComputer/attitudeMode")]
-        public async Task<IHttpContext> GetAttitudeMode(IHttpContext context)
+        private HttpResponse GetAttitudeMode(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 var mode = vehicle?.FlightComputer.AttitudeMode;
-                await SendJsonAsync(context, new { attitudeMode = mode?.ToString(), modeId = (int?)mode });
+                return Json(new { attitudeMode = mode?.ToString(), modeId = (int?)mode });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Put", "/control/flightComputer/attitudeMode")]
-        public async Task<IHttpContext> SetAttitudeMode(IHttpContext context)
+        private HttpResponse SetAttitudeMode(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 if (vehicle == null)
                 {
-                    await SendJsonAsync(context, new { error = "No vehicle controlled" }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = "No vehicle controlled" }, 400);
                 }
 
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 FlightComputerAttitudeMode mode;
 
-                // Try to parse as JSON or plain value
+                // Try to parse as JSON or plain value.
                 if (body.Contains("mode"))
                 {
                     var json = JsonDocument.Parse(body);
                     var modeValue = json.RootElement.GetProperty("mode");
-                    
+
                     if (modeValue.ValueKind == JsonValueKind.Number)
                     {
                         mode = (FlightComputerAttitudeMode)modeValue.GetInt32();
@@ -386,48 +376,43 @@ namespace KittenRemoteControl
                 }
 
                 vehicle.FlightComputer.AttitudeMode = mode;
-                await SendJsonAsync(context, new { success = true, attitudeMode = mode.ToString(), modeId = (int)mode });
+                return Json(new { success = true, attitudeMode = mode.ToString(), modeId = (int)mode });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/control/flightComputer/attitudeModes")]
-        public async Task<IHttpContext> GetAttitudeModes(IHttpContext context)
+        private HttpResponse GetAttitudeModes(HttpRequest request)
         {
             try
             {
                 var names = Enum.GetNames<FlightComputerAttitudeMode>();
                 var values = Enum.GetValues<FlightComputerAttitudeMode>();
                 var modes = names.Select((name, i) => new { name, value = (int)values[i] }).ToArray();
-                await SendJsonAsync(context, new { modes });
+                return Json(new { modes });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Put", "/control/flightComputer/stabilization")]
-        public async Task<IHttpContext> SetStabilization(IHttpContext context)
+        private HttpResponse SetStabilization(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 if (vehicle == null)
                 {
-                    await SendJsonAsync(context, new { error = "No vehicle controlled" }, HttpStatusCode.BadRequest);
-                    return context;
+                    return Json(new { error = "No vehicle controlled" }, 400);
                 }
 
-                var body = GetRequestBody(context);
+                var body = request.Body;
                 bool stabilization;
 
-                // Try to parse as JSON or plain value
+                // Try to parse as JSON or plain value.
                 if (body.Contains("stabilization"))
                 {
                     var json = JsonDocument.Parse(body);
@@ -439,19 +424,17 @@ namespace KittenRemoteControl
                 }
 
                 vehicle.SetStabilization(stabilization);
-                await SendJsonAsync(context, new { success = true, stabilization });
+                return Json(new { success = true, stabilization });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.BadRequest);
+                return Json(new { error = ex.Message }, 400);
             }
-            return context;
         }
 
         // ===== Telemetry Endpoints =====
 
-        [RestRoute("Get", "/telemetry/apoapsis")]
-        public async Task<IHttpContext> GetApoapsis(IHttpContext context)
+        private HttpResponse GetApoapsis(HttpRequest request)
         {
             try
             {
@@ -459,23 +442,20 @@ namespace KittenRemoteControl
                 var orbit = vehicle?.Orbit;
                 if (orbit == null)
                 {
-                    await SendJsonAsync(context, new { apoapsis = 0.0 });
-                    return context;
+                    return Json(new { apoapsis = 0.0 });
                 }
 
                 var val = (object)orbit.Apoapsis;
                 var apoapsis = val is IConvertible ? Convert.ToDouble(val, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { apoapsis });
+                return Json(new { apoapsis });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/periapsis")]
-        public async Task<IHttpContext> GetPeriapsis(IHttpContext context)
+        private HttpResponse GetPeriapsis(HttpRequest request)
         {
             try
             {
@@ -483,40 +463,34 @@ namespace KittenRemoteControl
                 var orbit = vehicle?.Orbit;
                 if (orbit == null)
                 {
-                    await SendJsonAsync(context, new { periapsis = 0.0 });
-                    return context;
+                    return Json(new { periapsis = 0.0 });
                 }
 
                 var val = (object)orbit.Periapsis;
                 var periapsis = val is IConvertible ? Convert.ToDouble(val, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { periapsis });
+                return Json(new { periapsis });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/orbitingBody/meanRadius")]
-        public async Task<IHttpContext> GetMeanRadius(IHttpContext context)
+        private HttpResponse GetMeanRadius(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
-                var meanRadius = vehicle?.Orbit.Parent.MeanRadius;
-                var radius = meanRadius.HasValue ? Convert.ToDouble(meanRadius, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { meanRadius = radius });
+                var radius = OrbitTelemetry.MeanRadius(vehicle?.Orbit?.Parent);
+                return Json(new { meanRadius = radius });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/apoapsis_elevation")]
-        public async Task<IHttpContext> GetApoapsisElevation(IHttpContext context)
+        private HttpResponse GetApoapsisElevation(HttpRequest request)
         {
             try
             {
@@ -524,28 +498,22 @@ namespace KittenRemoteControl
                 var orbit = vehicle?.Orbit;
                 if (orbit == null)
                 {
-                    await SendJsonAsync(context, new { apoapsisElevation = 0.0 });
-                    return context;
+                    return Json(new { apoapsisElevation = 0.0 });
                 }
 
-                var apo = orbit.Apoapsis;
-                var meanRadius = orbit.Parent.MeanRadius;
-
-                var apoVal = Convert.ToDouble(apo, CultureInfo.InvariantCulture);
-                var radiusVal = Convert.ToDouble(meanRadius, CultureInfo.InvariantCulture);
+                var apoVal = orbit.Apoapsis;
+                var radiusVal = OrbitTelemetry.MeanRadius(orbit.Parent);
                 var elevation = apoVal - radiusVal;
-                
-                await SendJsonAsync(context, new { apoapsisElevation = elevation });
+
+                return Json(new { apoapsisElevation = elevation });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/periapsis_elevation")]
-        public async Task<IHttpContext> GetPeriapsisElevation(IHttpContext context)
+        private HttpResponse GetPeriapsisElevation(HttpRequest request)
         {
             try
             {
@@ -553,76 +521,64 @@ namespace KittenRemoteControl
                 var orbit = vehicle?.Orbit;
                 if (orbit == null)
                 {
-                    await SendJsonAsync(context, new { periapsisElevation = 0.0 });
-                    return context;
+                    return Json(new { periapsisElevation = 0.0 });
                 }
 
-                var peri = orbit.Periapsis;
-                var meanRadius = orbit.Parent.MeanRadius;
-
-                var periVal = Convert.ToDouble(peri, CultureInfo.InvariantCulture);
-                var radiusVal = Convert.ToDouble(meanRadius, CultureInfo.InvariantCulture);
+                var periVal = orbit.Periapsis;
+                var radiusVal = OrbitTelemetry.MeanRadius(orbit.Parent);
                 var elevation = periVal - radiusVal;
-                
-                await SendJsonAsync(context, new { periapsisElevation = elevation });
+
+                return Json(new { periapsisElevation = elevation });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/orbitalSpeed")]
-        public async Task<IHttpContext> GetOrbitalSpeed(IHttpContext context)
+        private HttpResponse GetOrbitalSpeed(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 var speed = vehicle?.OrbitalSpeed;
                 var orbitalSpeed = speed.HasValue ? Convert.ToDouble(speed, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { orbitalSpeed });
+                return Json(new { orbitalSpeed });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/propellantMass")]
-        public async Task<IHttpContext> GetPropellantMass(IHttpContext context)
+        private HttpResponse GetPropellantMass(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 var mass = vehicle?.PropellantMass;
                 var propellantMass = mass.HasValue ? Convert.ToDouble(mass, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { propellantMass });
+                return Json(new { propellantMass });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
 
-        [RestRoute("Get", "/telemetry/totalMass")]
-        public async Task<IHttpContext> GetTotalMass(IHttpContext context)
+        private HttpResponse GetTotalMass(HttpRequest request)
         {
             try
             {
                 var vehicle = Program.ControlledVehicle;
                 var mass = vehicle?.TotalMass;
                 var totalMass = mass.HasValue ? Convert.ToDouble(mass, CultureInfo.InvariantCulture) : 0.0;
-                await SendJsonAsync(context, new { totalMass });
+                return Json(new { totalMass });
             }
             catch (Exception ex)
             {
-                await SendJsonAsync(context, new { error = ex.Message }, HttpStatusCode.InternalServerError);
+                return Json(new { error = ex.Message }, 500);
             }
-            return context;
         }
     }
 }
-

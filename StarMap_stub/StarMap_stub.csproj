@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>StarMap.API</AssemblyName>
+    <!-- Match the real loader assembly version so the mod's assembly reference lines up. -->
+    <AssemblyVersion>0.4.5.0</AssemblyVersion>
+    <FileVersion>0.4.5.0</FileVersion>
+    <Version>0.4.5.0</Version>
+    <!-- Emit StarMap.API.dll directly into KSA_dlls (no TFM subfolder), where the main
+         project's HintPath expects it. This is a compile-time stub only; at runtime the
+         StarMap loader provides the real StarMap.API assembly. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(MSBuildProjectDirectory)\..\KSA_dlls\</OutputPath>
+  </PropertyGroup>
+</Project>

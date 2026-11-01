@@ -1,73 +1,158 @@
-﻿# Kitten Remote Control - REST API Documentation
+# Kitten Remote Control
 
-A RESTful API server mod for Kitten Space Agency that enables remote control via HTTP endpoints with JSON responses.
+Remote control **and** live telemetry for **Kitten Space Agency (KSA)**, exposed over HTTP — so you
+can fly and monitor a vessel from scripts, a microcontroller, or a phone browser.
 
-## Installation
+> ⚠️ **Proof of concept.** This is an experimental hobby mod, not a finished product and the changes has been mostly VIBE Coded just to prove if it can work.
+>
+>It grew out of getting KSA's mod API reachable while running the game under **Wine/CrossOver** on macOS/Linux (where `System.Net.HttpListener` / http.sys is unavailable), so it ships a small built-in
+> `TcpListener` HTTP server instead.
+>
+> The API surface is **partial and evolving**, there is **no
+> authentication and no TLS**, and the servers bind to all interfaces (`0.0.0.0`) — anyone who can
+> reach the port can command your vessel. **Run it only on a trusted LAN.**
+>
+> The aim of this project is showcase what is possible for the future with hardware controllers for KSA. And I wanted to keep the API aligned so kids can use Microblocks and the same library that is being used for Telemachus/KSP: https://gitlab.com/attila.strba/microblocks-ksp-telemachus
 
-### From GitHub Releases (Recommended)
 
-1. **Download the latest release** from the [Releases page](https://github.com/[your-repo]/KittenRemoteControl/releases)
-2. **Extract the ZIP file** to your game's mod directory:
-   ```
-   <Game Directory>/mods/KittenRemoteControl/
-   ```
-   Example:
-   ```
-   C:\Program Files\Kitten Space Agency\mods\KittenRemoteControl\
-   ```
-3. **Launch the game** - StarMap mod loader will automatically load the mod
-4. **Check the console** for the message: "Remote Control REST Server started successfully on http://localhost:8080"
+## What's in the box
 
-### Manual Installation
+| Component | Port | What it is |
+|-----------|------|-----------|
+| **Control REST API** | 8080 | JSON REST endpoints for control + telemetry (`/control/*`, `/telemetry/*`). |
+| **Telemachus datalink** | 8085 | A Telemachus-compatible `/telemachus/datalink` endpoint so existing Telemachus clients (e.g. a MicroBlocks library) work unchanged. |
+| **In-game window** | — | An ImGui overlay listing which clients are connected. |
+| **Houston dashboard** | — | A self-contained web page (`frontend/houston.html`) with KSA-style rolling-odometer gauges. |
 
-If you want to build from source:
+Jump to: [Telemachus datalink](#telemachus-datalink-proof-of-concept) ·
+[Houston dashboard](#houston-web-dashboard) ·
+[In-game window](#in-game-status-window) ·
+[REST API](#protocol)
 
-1. Clone the repository
-2. Ensure you have the KSA DLLs in the `KSA_dlls` directory (see [Development](#development))
-3. Build the project:
-   ```bash
-   dotnet build -c Release
-   ```
-4. Copy the contents of `bin/Release/net9.0/` to your game's mod directory
+## Installation with Borea
 
-### Verification
+Prepared prerelease: **0.1.0-borea.2**, tested with **KSA 2026.10.25.5707** and **StarMap 0.4.8** on Windows.
 
-To verify the installation:
-1. Launch Kitten Space Agency
-2. Open a browser and navigate to: http://localhost:8080/telemetry/totalMass
-3. You should see a JSON response with the current vessel's mass
+1. Download the versioned mod ZIP from [GitHub Releases](https://github.com/attilastrba/KittenRemoteControl/releases), or build it locally as below.
+2. Close the game. In Borea open your instance's mods folder and extract the ZIP's single `KittenRemoteControl` folder there, replacing the previous installation.
+3. Enable `KittenRemoteControl` in the instance manifest, launch through Borea, and start the simulation. See [release installation details](RELEASE-PACKAGE.md) for the manifest entry.
+4. Check the in-game connection window or http://localhost:8080/telemetry/totalMass.
 
-## What's Included
+### Houston quick start
 
-The release package includes:
-- ✅ Main mod DLL (KittenRemoteControl.dll)
-- ✅ All required dependencies (Harmony, Grapevine, Microsoft.Extensions.*)
-- ✅ Complete documentation (README, OpenAPI spec)
-- ✅ All license files
+Open the installed mod's `frontend` folder, double-click **start-houston.cmd**, and visit **http://localhost:8000/houston.html**. Keep the server window open. Use host `localhost` and datalink port `8085`. Python 3 is needed only for this optional web server.
 
-**Note**: Kitten Space Agency game files are NOT included. You must own the game to use this mod.
+Alternatively, run `python3 -m http.server 8000` **from the frontend folder**. Running it from the repository root serves Houston at `/frontend/houston.html` instead. Port 8000 hosts the dashboard; the mod does not host dashboard files on port 8080.
 
-For a complete list of included files, see [RELEASE-PACKAGE.md](RELEASE-PACKAGE.md).
+### Build from source
 
-## Requirements
+Install a .NET 10 SDK; full Visual Studio is unnecessary. Use actual installed game and loader assemblies:
 
-- **Kitten Space Agency** (the game)
-- **StarMap Mod Loader** v0.3.1 or higher
-- **.NET 9.0 Runtime** (usually included with the game)
+```powershell
+.\build-package.ps1 -GamePath 'C:\Program Files\Ahwoo\Games\Kitten Space Agency' -StarMapPath "$env:LOCALAPPDATA\Borea\Loaders\StarMap" -RefreshPrebuilt
+```
 
-## Uninstallation
+The versioned ZIP and SHA-256 checksum are written to `artifacts/`. It includes the mod, Houston and its startup helper, documentation and license references. Game/loader DLLs and obsolete dependencies are excluded. See [RELEASE-PACKAGE.md](RELEASE-PACKAGE.md) for packaging and [release/RELEASING.md](release/RELEASING.md) for the later Borea catalogue submission.
 
-To remove the mod:
-1. Delete the `KittenRemoteControl` folder from your game's mods directory
-2. Restart the game
+### Requirements and compatibility
 
-## Installation according to this explanation
+- KSA 2026.10.25.5707 and StarMap API 0.4.8 are the tested baseline; the game uses .NET 10.
+- Python 3 is optional for serving Houston, not required by the mod.
+- The TCP/Wine implementation is preserved, but Wine/CrossOver and hardware controllers were not retested in this prerelease session.
+- REST routes and response structures are retained from this branch.
 
-See: https://forums.ahwoo.com/threads/how-to-use-starmap-mod-loader.398/#post-2113
+## Telemachus datalink (proof of concept)
+
+A second HTTP server on **port 8085** exposes a single endpoint, `/telemachus/datalink`, that is
+wire-compatible with the classic **Telemachus** "datalink" protocol (from the KSP mod of the same
+name). This lets existing Telemachus clients — for example a MicroBlocks Telemachus library running
+on a microcontroller — talk to KSA with **no changes**.
+
+- **Request:** `label=apiString` pairs, either as a **GET** query string
+  (`?alt=v.altitude&ap=o.ApAkm`) or a **POST** JSON body (`{"alt":"v.altitude"}`).
+- **Response:** a flat JSON object keyed by *your* labels, e.g. `{"alt":250000,"ap":874.0}`.
+- **Reserved GET params:** `_int=true` (return integers), `_precision=N` (round to N decimals).
+- **Input scaling:** a trailing `|scale:min,max` maps the first bracket argument linearly from
+  `[min,max]` to `[0,1]` — used for throttle (`f.setThrottle[512]|scale:0,1023`).
+- **Conventions:** unknown/unavailable values return `-1`; `a.version` always answers (it's the
+  connection heartbeat); commands return `0` on success.
+
+### Implemented keys (so far)
+
+| Key | Type | Meaning |
+|-----|------|---------|
+| `a.version` | read | Version string; answerable in every scene (heartbeat). |
+| `v.altitude` | read | Altitude above sea level (m). |
+| `o.ApA` / `o.PeA` | read | Apoapsis / periapsis **altitude** ASL (m). |
+| `o.ApAkm` / `o.PeAkm` | read | Same, in **km** (non-stock convenience keys). |
+| `o.ApR` / `o.PeR` | read | Apoapsis / periapsis **radius** from the body centre (m). |
+| `dv.totalDVActual` | read | Total vessel delta-v remaining (m/s). |
+| `dv.stageDVActual` | read | Current (firing) stage delta-v remaining (m/s). |
+| `dv.stageMaxDVActual` | read | Current stage delta-v at ignition (m/s) — non-stock; a stable reference so a client can show `stage / stageMax`. |
+| `f.setThrottle[0..1]` | command | Set engine throttle (accepts `\|scale:0,1023`). |
+| `f.stage` | command | Fire the next stage. |
+| `f.engine[true\|false]` | command | Engine on/off; bare `f.engine` toggles. Non-stock, follows the Telemachus toggle convention. |
+
+Notes: the "current stage" is detected by thrust (the sequence that's actually firing), not KSA's
+active-stage index. KSA has **no KSP-style named resources** (it's a substance/chemistry sim), so
+`r.resource[...]` keys are intentionally *not* implemented; use `dv.*` and telemetry instead. Other
+keys (orbital elements, time/warp, SAS/attitude, fly-by-wire) are researched and can be added.
+
+**Examples** — use `curl -g` so the shell doesn't try to glob `[` `]`:
+
+```bash
+# heartbeat
+curl "http://localhost:8085/telemachus/datalink?v=a.version"                    # {"v":"1.0.0"}
+
+# telemetry (apoapsis/periapsis in km, altitude in m)
+curl "http://localhost:8085/telemachus/datalink?ap=o.ApAkm&pe=o.PeAkm&alt=v.altitude"
+
+# set throttle to ~50%
+curl -g "http://localhost:8085/telemachus/datalink?c1=f.setThrottle[0.5]"       # {"c1":0}
+
+# stage / engine on
+curl -g "http://localhost:8085/telemachus/datalink?c1=f.stage"
+curl -g "http://localhost:8085/telemachus/datalink?c1=f.engine[true]"
+```
+
+## In-game status window
+
+When the mod loads it draws an ImGui overlay titled **"Kitten Remote Control"** in-game, showing the
+two server URLs and every client that has connected — IP, port, request count, last request line,
+and a `LIVE`/`idle` indicator. Handy for confirming that your phone or microcontroller actually
+reached the game.
+
+## Houston web dashboard
+
+`frontend/houston.html` is a self-contained web dashboard (no external dependencies, no build step)
+that polls the datalink and shows **Apoapsis / Periapsis / Altitude** on KSA-style rolling-odometer
+gauges, with a connection light, editable host/port/refresh-rate, and an astronaut-cat mascot. 🐱‍🚀
+
+**On the same machine as KSA** — just open the file in a browser:
+
+```bash
+open frontend/houston.html          # macOS  (or double-click it)
+```
+
+**From a phone or another device on the LAN** — serve the `frontend` folder and browse to the host's
+IP:
+
+```bash
+cd frontend
+python3 -m http.server 8000
+# then on the phone (same Wi-Fi):  http://<host-ip>:8000/houston.html
+```
+
+When it's served over HTTP the page automatically targets the serving host for the datalink, so no
+configuration is needed on the phone. This works because the datalink binds `0.0.0.0` and sends a
+permissive CORS header. (First run on macOS may prompt to allow incoming connections for Python —
+click Allow.)
 
 ## Protocol
 
-The server uses a RESTful HTTP API with JSON request/response format powered by Grapevine.
+The server uses a RESTful HTTP API with JSON request/response format, served by a built-in
+lightweight HTTP server (raw `TcpListener`). It does **not** use `System.Net.HttpListener`, so it
+runs on Wine/CrossOver where the Windows HTTP Server API (http.sys) is unavailable.
 
 ### Base URL
 ```
@@ -687,16 +772,16 @@ Common error scenarios:
 
 ### Build
 ```bash
-dotnet build -c Release
+.\build-package.ps1 -GamePath <installed-game-directory> -StarMapPath <installed-loader-directory>
 ```
 
 ### Deployment
-The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copied to the game's mod directory along with Grapevine dependencies.
+Use the versioned ZIP in `artifacts/`, which includes the frontend and metadata. Do not copy stale `bin/` or legacy `dist/` files without running the release packager.
 
 ## Features
 
 - ✅ RESTful HTTP API with JSON
-- ✅ Powered by Grapevine server
+- ✅ Built-in lightweight HTTP server (no `HttpListener` / http.sys dependency — works under Wine/CrossOver)
 - ✅ Flexible input (JSON objects or plain values)
 - ✅ Proper HTTP status codes
 - ✅ Clean and modern API design
@@ -707,8 +792,8 @@ The DLL is built to `bin/Release/net9.0/KittenRemoteControl.dll` and can be copi
 
 ## Technical Details
 
-The server uses Grapevine REST server framework:
-- Port: 8080 (configurable)
+The server uses a built-in `TcpListener`-based HTTP/1.1 server (see `TcpHttpServer.cs`):
+- Ports: 8080 (REST) and 8085 (Telemachus), bound to all interfaces
 - Protocol: HTTP/1.1
 - Format: JSON (with fallback to plain text for simple values)
 - Encoding: UTF-8

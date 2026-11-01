@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houston — Kitten Remote Control</title>
+<link rel="stylesheet" href="houston.css">
+</head>
+<body>
+  <header>
+    <h1>Kitten Remote Control</h1>
+    <div class="sub">MISSION READOUT · TELEMACHUS DATALINK</div>
+  </header>
+
+  <div class="config">
+    <label>Host <input id="host" value="localhost" spellcheck="false"></label>
+    <label>Port <input id="port" class="small" value="8085"></label>
+    <label>Rate(ms) <input id="rate" class="small" value="500"></label>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">OFFLINE</span></div>
+  </div>
+
+  <div class="stack">
+    <div class="gauge"><span class="screw-l"></span><span class="screw-r"></span>
+      <div class="label">Stage &#916;V</div>
+      <div class="dv-row">
+        <div class="arc-wrap">
+          <svg class="arc" viewBox="0 0 120 120">
+            <circle class="arc-track" cx="60" cy="60" r="52" transform="rotate(135 60 60)"></circle>
+            <circle class="arc-val"   cx="60" cy="60" r="52" transform="rotate(135 60 60)"></circle>
+          </svg>
+          <div class="arc-center"><span id="dvPct">--</span><small>%</small></div>
+        </div>
+        <div class="dv-num">
+          <div class="dv-big"><span id="dvStage">--</span><small>km/s</small></div>
+          <div class="dv-sub">of <span id="dvStageMax">--</span> km/s</div>
+          <div class="dv-kmh"><span id="dvStageKmh">--</span> km/h</div>
+          <div class="dv-total">TOTAL <span id="dvTotal">--</span> km/s</div>
+        </div>
+      </div>
+    </div>
+    <div class="gauge"><span class="screw-l"></span><span class="screw-r"></span>
+      <div class="label">Apoapsis</div>
+      <div class="readout" data-gauge="apoapsis"></div>
+    </div>
+    <div class="gauge"><span class="screw-l"></span><span class="screw-r"></span>
+      <div class="label">Periapsis</div>
+      <div class="readout" data-gauge="periapsis"></div>
+    </div>
+    <div class="gauge"><span class="screw-l"></span><span class="screw-r"></span>
+      <div class="label">Altitude</div>
+      <div class="readout" data-gauge="altitude"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div id="ver">version —</div>
+    <div id="err"></div>
+  </footer>
+
+  <script src="houston.js"></script>
+</body>
+</html>

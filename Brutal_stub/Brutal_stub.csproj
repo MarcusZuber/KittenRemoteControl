@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Brutal.ImGui</AssemblyName>
+    <!-- Compile-time stub only; the real Brutal.ImGui is provided by the game at runtime. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(MSBuildProjectDirectory)\..\KSA_dlls\</OutputPath>
+  </PropertyGroup>
+</Project>

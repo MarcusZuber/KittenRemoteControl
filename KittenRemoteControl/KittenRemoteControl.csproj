@@ -1,71 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <LangVersion>preview</LangVersion>
-    </PropertyGroup>
-
-
-    <!-- Allow overriding the KSA DLLs location via an environment variable/property KSA_DLLS_PATH -->
-    <PropertyGroup>
-        <KsaDllsOverride>$(KSA_DLLS_PATH)</KsaDllsOverride>
-    </PropertyGroup>
-
-    <ItemGroup Condition="'$(KsaDllsOverride)' != ''">
-        <KsaDlls Include="$(KsaDllsOverride)\*.dll" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(KsaDllsOverride)' == ''">
-        <!-- Collect all DLLs from the KSA_dll and KSA_dlls folders (relative to the project file) -->
-        <KsaDlls Include="$(MSBuildProjectDirectory)\..\KSA_dll\*.dll;$(MSBuildProjectDirectory)\..\KSA_dlls\*.dll" />
-    </ItemGroup>
-
-    <Target Name="ShowKsaDlls" BeforeTargets="BeforeBuild">
-        <Message Importance="High" Text="KSA dlls found: @(KsaDlls->'%(FullPath)')" />
-    </Target>
-
-    <Target Name="FailIfNoKsaDlls" BeforeTargets="BeforeBuild">
-        <Message Importance="High" Text="Checking for KSA DLLs in ../KSA_dll, ../KSA_dlls or $(KsaDllsOverride) ..." />
-        <Error Condition="'@(KsaDlls)' == ''" Text="No KSA DLLs found in '../KSA_dll' or '../KSA_dlls' and no KSA_DLLS_PATH provided. Put the DLLs into one of those folders relative to the project or set the KSA_DLLS_PATH MSBuild property or env var to point to the folder." />
-    </Target>
-
-    <ItemGroup>
-        <!-- Add explicit references to the specific KSA DLLs from the KSA_dlls folder -->
-        <Reference Include="Brutal.Core.Numerics">
-            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.Core.Numerics.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
-        <Reference Include="Brutal.Glfw">
-            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.Glfw.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
-        <Reference Include="Brutal.ImGui">
-            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.ImGui.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
-        <Reference Include="Brutal.ImGui.Extensions">
-            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\Brutal.ImGui.Extensions.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
-        <Reference Include="KSA">
-            <HintPath>$(MSBuildProjectDirectory)\..\KSA_dlls\KSA.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Lib.Harmony" Version="2.4.1"/>
-        <PackageReference Include="starmap.api" Version="0.3.1" />
-        <PackageReference Include="Grapevine" Version="5.0.2" />
-    </ItemGroup>
-
-    <Target Name="DumpReferences" BeforeTargets="CoreCompile">
-        <Message Importance="High" Text="--- Dumping Reference items (Identity | HintPath) ---" />
-        <Message Importance="High" Text="%(Reference.Identity) | %(Reference.HintPath)" />
-    </Target>
-
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>0.1.0-borea.2</Version>
+    <Authors>Attila Strba</Authors>
+    <Description>HTTP remote control, Telemachus telemetry and Houston dashboard for Kitten Space Agency.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/attilastrba/KittenRemoteControl</RepositoryUrl>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <KSA_DLLS_PATH Condition="'$(KSA_DLLS_PATH)' == ''">$(MSBuildProjectDirectory)\..\KSA_dlls</KSA_DLLS_PATH>
+    <STARMAP_PATH Condition="'$(STARMAP_PATH)' == ''">$(LOCALAPPDATA)\Borea\Loaders\StarMap</STARMAP_PATH>
+  </PropertyGroup>
+  <ItemGroup>
+    <GameAssembly Include="$(KSA_DLLS_PATH)\KSA.dll;$(KSA_DLLS_PATH)\Brutal.*.dll;$(KSA_DLLS_PATH)\Planet.*.dll" />
+    <Reference Include="@(GameAssembly)"><Private>false</Private></Reference>
+    <Reference Include="StarMap.API"><HintPath>$(STARMAP_PATH)\StarMap.API.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(STARMAP_PATH)\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <None Update="mod.toml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="ValidateInstalledAssemblies" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(KSA_DLLS_PATH)\KSA.dll')" Text="Set KSA_DLLS_PATH to the installed KSA directory." />
+    <Error Condition="!Exists('$(STARMAP_PATH)\0Harmony.dll')" Text="The installed StarMap directory must contain 0Harmony.dll." />
+    <Error Condition="!Exists('$(STARMAP_PATH)\StarMap.API.dll')" Text="Set STARMAP_PATH to the installed StarMap directory." />
+  </Target>
 </Project>
