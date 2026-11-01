@@ -21,7 +21,7 @@ tags = ["tools", "user-interface"]
 [releases]
 github = "attilastrba/KittenRemoteControl"
 tag_prefix = "v"
-since = "0.1.0-borea.1"
+since = "0.1.0-borea.2"
 
 [links]
 # forums = "INSERT THE REAL AH WOO MOD RELEASE THREAD URL HERE"

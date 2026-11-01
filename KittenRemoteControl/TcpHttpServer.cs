@@ -51,6 +51,11 @@ namespace KittenRemoteControl
             new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _cts;
         private Task? _listenerTask;
+        private readonly object _lifecycleGate = new();
+        private readonly object _clientsGate = new();
+        private readonly Dictionary<object, Task> _clients = new();
+        private readonly TimeSpan _requestTimeout;
+        private bool _disposed;
 
         // Reflection handles for System.Net.Sockets, resolved in Start().
         private object? _listener;                 // System.Net.Sockets.TcpListener
@@ -59,9 +64,12 @@ namespace KittenRemoteControl
         private PropertyInfo? _taskResultProp;     // Task<TcpClient>.Result
         private MethodInfo? _getStreamMethod;      // TcpClient.GetStream()
 
-        public TcpHttpServer(int port = 8080)
+        public TcpHttpServer(int port = 8080, TimeSpan? requestTimeout = null)
         {
             _port = port;
+            _requestTimeout = requestTimeout ?? TimeSpan.FromSeconds(15);
+            if (_requestTimeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(requestTimeout));
         }
 
         public int Port => _port;
@@ -78,34 +86,54 @@ namespace KittenRemoteControl
         /// <summary>Starts accepting connections on a background task.</summary>
         public void Start()
         {
-            if (_listenerTask != null)
-                return;
+            lock (_lifecycleGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_listenerTask != null)
+                    return;
 
-            // Resolve System.Net.Sockets purely via reflection so no S.N.Sockets token appears in
-            // this assembly's IL (see the class remarks for why that matters under StarMap/Wine).
-            var socketsAsm = Assembly.Load("System.Net.Sockets");
-            var tcpListenerType = socketsAsm.GetType("System.Net.Sockets.TcpListener", throwOnError: true)!;
+                // Resolve System.Net.Sockets purely via reflection so no S.N.Sockets token appears in
+                // this assembly's IL (see the class remarks for why that matters under StarMap/Wine).
+                var socketsAsm = Assembly.Load("System.Net.Sockets");
+                var tcpListenerType = socketsAsm.GetType("System.Net.Sockets.TcpListener", throwOnError: true)!;
 
-            // new TcpListener(IPAddress.Any, _port)
-            // NOTE: bound to IPAddress.Any (0.0.0.0) so the API is reachable from other machines on
-            // the LAN. This API has no authentication or TLS and can control the vessel, so anyone
-            // who can reach this port can command it.
-            _listener = Activator.CreateInstance(tcpListenerType, IPAddress.Any, _port)!;
-            _acceptMethod = tcpListenerType.GetMethod("AcceptTcpClientAsync", Type.EmptyTypes)!;
-            _stopMethod = tcpListenerType.GetMethod("Stop", Type.EmptyTypes)!;
-            tcpListenerType.GetMethod("Start", Type.EmptyTypes)!.Invoke(_listener, null);
+                // new TcpListener(IPAddress.Any, _port)
+                // NOTE: bound to IPAddress.Any (0.0.0.0) so the API is reachable from other machines on
+                // the LAN. This API has no authentication or TLS and can control the vessel, so anyone
+                // who can reach this port can command it.
+                _listener = Activator.CreateInstance(tcpListenerType, IPAddress.Any, _port)!;
+                _acceptMethod = tcpListenerType.GetMethod("AcceptTcpClientAsync", Type.EmptyTypes)!;
+                _stopMethod = tcpListenerType.GetMethod("Stop", Type.EmptyTypes)!;
+                tcpListenerType.GetMethod("Start", Type.EmptyTypes)!.Invoke(_listener, null);
 
-            _cts = new CancellationTokenSource();
-            _listenerTask = Task.Run(() => ListenAsync(_cts.Token));
+                _cts = new CancellationTokenSource();
+                var token = _cts.Token;
+                _listenerTask = Task.Run(() => ListenAsync(token));
+            }
         }
 
-        /// <summary>Stops the server and releases the listening socket.</summary>
+        /// <summary>Stop accepting, cancel/close clients, and finish handlers before returning.</summary>
         public void Stop()
         {
-            _cts?.Cancel();
-            try { _stopMethod?.Invoke(_listener, null); } catch { /* already stopped */ }
-            try { _listenerTask?.Wait(TimeSpan.FromSeconds(5)); } catch { /* ignore shutdown races */ }
-            _listenerTask = null;
+            lock (_lifecycleGate)
+            {
+                if (_cts == null) return;
+                _cts.Cancel();
+                try { _stopMethod?.Invoke(_listener, null); } catch { /* already stopped */ }
+                // No client registration can happen after the accept loop has finished.
+                _listenerTask?.GetAwaiter().GetResult();
+                KeyValuePair<object, Task>[] clients;
+                lock (_clientsGate) clients = _clients.ToArray();
+                foreach (var client in clients)
+                {
+                    try { (client.Key as IDisposable)?.Dispose(); } catch { /* already closed */ }
+                }
+                Task.WhenAll(clients.Select(client => client.Value)).GetAwaiter().GetResult();
+                _listenerTask = null;
+                _listener = null;
+                _cts.Dispose();
+                _cts = null;
+            }
         }
 
         private async Task ListenAsync(CancellationToken cancellationToken)
@@ -133,12 +161,24 @@ namespace KittenRemoteControl
                     continue;
                 }
 
-                _ = Task.Run(() => HandleClientAsync(client), cancellationToken);
+                lock (_clientsGate)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        (client as IDisposable)?.Dispose();
+                        break;
+                    }
+                    // Do not cancel task scheduling: its finally block must always close the socket.
+                    _clients.Add(client, Task.Run(() => HandleClientAsync(client, cancellationToken)));
+                }
             }
         }
 
-        private async Task HandleClientAsync(object client)
+        private async Task HandleClientAsync(object client, CancellationToken serverToken)
         {
+            using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(serverToken);
+            requestCts.CancelAfter(_requestTimeout);
+            var token = requestCts.Token;
             try
             {
                 using (client as IDisposable) // TcpClient implements IDisposable; closes the socket.
@@ -147,7 +187,8 @@ namespace KittenRemoteControl
                     _getStreamMethod ??= client.GetType().GetMethod("GetStream", Type.EmptyTypes)!;
                     var stream = (Stream)_getStreamMethod.Invoke(client, null)!;
 
-                    var request = await ReadRequestAsync(stream);
+                    var request = await ReadRequestAsync(stream, token);
+                    token.ThrowIfCancellationRequested();
                     if (request == null)
                         return;
 
@@ -182,12 +223,20 @@ namespace KittenRemoteControl
                         };
                     }
 
-                    await WriteResponseAsync(stream, response);
+                    await WriteResponseAsync(stream, response, token);
                 }
+            }
+            catch (Exception) when (requestCts.IsCancellationRequested)
+            {
+                // Expected on server shutdown or an abandoned/incomplete request.
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[KittenRemoteControl] Error handling client: {Unwrap(ex).Message}");
+            }
+            finally
+            {
+                lock (_clientsGate) _clients.Remove(client);
             }
         }
 
@@ -212,7 +261,7 @@ namespace KittenRemoteControl
             }
         }
 
-        private static async Task<HttpRequest?> ReadRequestAsync(Stream stream)
+        private static async Task<HttpRequest?> ReadRequestAsync(Stream stream, CancellationToken token)
         {
             var buffer = new byte[8192];
             var received = new List<byte>();
@@ -221,9 +270,9 @@ namespace KittenRemoteControl
             // Read until the end of the header block (\r\n\r\n) is found.
             while (headerEnd < 0)
             {
-                var read = await stream.ReadAsync(buffer);
+                var read = await stream.ReadAsync(buffer, token);
                 if (read == 0)
-                    break;
+                    return null;
 
                 received.AddRange(new ArraySegment<byte>(buffer, 0, read));
                 headerEnd = IndexOfDoubleCrlf(received);
@@ -275,9 +324,9 @@ namespace KittenRemoteControl
             // Read the rest of the body up to Content-Length.
             while (bodyBytes.Count < contentLength)
             {
-                var read = await stream.ReadAsync(buffer);
+                var read = await stream.ReadAsync(buffer, token);
                 if (read == 0)
-                    break;
+                    return null;
                 bodyBytes.AddRange(new ArraySegment<byte>(buffer, 0, read));
             }
 
@@ -299,7 +348,7 @@ namespace KittenRemoteControl
             return -1;
         }
 
-        private static async Task WriteResponseAsync(Stream stream, HttpResponse response)
+        private static async Task WriteResponseAsync(Stream stream, HttpResponse response, CancellationToken token)
         {
             var bodyBytes = Encoding.UTF8.GetBytes(response.Body ?? "");
 
@@ -316,10 +365,10 @@ namespace KittenRemoteControl
             head.Append("\r\n");
 
             var headBytes = Encoding.ASCII.GetBytes(head.ToString());
-            await stream.WriteAsync(headBytes);
+            await stream.WriteAsync(headBytes, token);
             if (bodyBytes.Length > 0)
-                await stream.WriteAsync(bodyBytes);
-            await stream.FlushAsync();
+                await stream.WriteAsync(bodyBytes, token);
+            await stream.FlushAsync(token);
         }
 
         private static string ReasonPhrase(int code) => code switch
@@ -334,8 +383,12 @@ namespace KittenRemoteControl
 
         public void Dispose()
         {
-            Stop();
-            _cts?.Dispose();
+            lock (_lifecycleGate)
+            {
+                if (_disposed) return;
+                Stop();
+                _disposed = true;
+            }
         }
     }
 }

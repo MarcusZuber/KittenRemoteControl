@@ -225,12 +225,13 @@ namespace KittenRemoteControl
             var orbit = Program.ControlledVehicle?.Orbit;
             if (orbit == null) return -1;
             var radius = apoapsis ? orbit.Apoapsis : orbit.Periapsis;
-            var alt = radius - BodyMeanRadius(orbit.Parent);
+            var alt = radius - OrbitTelemetry.MeanRadius(orbit.Parent);
             return km ? alt / 1000.0 : alt;
         }
 
-        private static int _dvStageIndex = -1;
-        private static double _peakStageDv = -1;
+        private static readonly StageDeltaVTracker DeltaVTracker = new();
+
+        internal static void ResetDeltaV() => DeltaVTracker.Reset();
 
         // Active-stage delta-v (m/s): current = the firing stage's delta-v now; max = its delta-v at
         // ignition (peak since this stage became current, reset when the current stage changes). Gives
@@ -238,14 +239,12 @@ namespace KittenRemoteControl
         private static (double current, double max) StageDeltaV()
         {
             var vehicle = Program.ControlledVehicle;
-            if (vehicle == null) return (-1, -1);
+            if (vehicle == null) return DeltaVTracker.Update(null, -1, -1);
             var span = vehicle.Parts.PerformanceSequences.PerformanceSequences;
             var idx = CurrentStageIndex(span);
-            if (idx < 0) return (-1, -1);
+            if (idx < 0) return DeltaVTracker.Update(null, -1, -1);
             var current = (double)span[idx].DeltaV;
-            if (idx != _dvStageIndex) { _dvStageIndex = idx; _peakStageDv = current; } // new stage -> reset
-            if (current > _peakStageDv) _peakStageDv = current;
-            return (current, _peakStageDv);
+            return DeltaVTracker.Update(vehicle, idx, current);
         }
 
         // Index of the "current" stage in the performance list: the one currently firing (max thrust);
@@ -261,15 +260,6 @@ namespace KittenRemoteControl
                 if (span[i].DeltaV > bestDv) { bestDv = span[i].DeltaV; biggest = i; }
             }
             return firing >= 0 ? firing : biggest;
-        }
-
-        // Body sea-level radius. orbit.Parent is an IParentBody; the concrete body type exposes a
-        // MeanRadius (double) which the interface does not, so read it by reflection.
-        private static double BodyMeanRadius(object? parent)
-        {
-            if (parent == null) return 0.0;
-            var prop = parent.GetType().GetProperty("MeanRadius");
-            return prop != null ? Convert.ToDouble(prop.GetValue(parent), CultureInfo.InvariantCulture) : 0.0;
         }
 
         // Parse a Telemachus-style boolean arg: true/false (any case) or 1/0. null if unparseable.

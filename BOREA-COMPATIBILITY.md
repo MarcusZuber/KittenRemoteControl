@@ -1,6 +1,6 @@
 # Borea compatibility verification
 
-Release candidate: 0.1.0-borea.1, based on fix/wine-httplistener-tcp-server.
+Release candidate: 0.1.0-borea.2, based on fix/wine-httplistener-tcp-server.
 Tested on 2026-10-31 with KSA 2026.10.25.5707, StarMap.API 0.4.8.0 and .NET SDK 10.0.403 on Windows.
 
 Build against the real installed assemblies; do not use KSA_stub, StarMap_stub or Brutal_stub for a release.
@@ -15,3 +15,5 @@ Not tested: physical controllers, engine ignition, active thrusters, staging, fi
 Windows Firewall permissions are handled by the user. No original game installation files were changed.
 
 See RELEASE-PACKAGE.md for installation and release/RELEASING.md for the local publication handoff.
+
+Revision .2: the three pre-merge issues are fixed and covered by regression checks. Historical in-game/hardware observations above refer to .1; this revision was built and tested without restarting the user's running game.

@@ -1,6 +1,6 @@
 # Borea release package
 
-Version: **0.1.0-borea.1** (experimental prerelease).
+Version: **0.1.0-borea.2** (experimental prerelease).
 
 The archive has exactly one top-level folder:
 
@@ -35,7 +35,7 @@ Use a .NET 10 SDK, the actual game installation and the installed StarMap 0.4.8 
 .\build-package.ps1 -GamePath 'C:\Program Files\Ahwoo\Games\Kitten Space Agency' -StarMapPath "$env:LOCALAPPDATA\Borea\Loaders\StarMap" -RefreshPrebuilt
 ```
 
-The output is `artifacts/KittenRemoteControl-0.1.0-borea.1.zip` and its `.sha256` checksum. `-RefreshPrebuilt` updates the three tracked runtime files and `build-info.json` under `dist/KittenRemoteControl`. Commit these with their source changes. Source fingerprints normalize line endings so Windows and CI checkouts agree.
+The output is `artifacts/KittenRemoteControl-0.1.0-borea.2.zip` and its `.sha256` checksum. `-RefreshPrebuilt` updates the three tracked runtime files and `build-info.json` under `dist/KittenRemoteControl`. Commit these with their source changes. Source fingerprints normalize line endings so Windows and CI checkouts agree.
 
 `package-release.ps1` verifies the prebuilt binary and source hashes and packages them without requiring game assemblies. The GitHub workflow runs that validation and produces an artifact; it does not compile against stubs or publish a release. `test-package.ps1 -ZipPath <archive>` checks paths, metadata, required frontend files and runtime hashes.
 
@@ -56,3 +56,5 @@ For Houston, open the installed mod's `frontend` folder, run `start-houston.cmd`
 ## Publish later
 
 See `release/RELEASING.md`, `release/RELEASE-NOTES.md`, the forum-post draft and `release/borea/KittenRemoteControl.toml.template`. A ZIP that installs manually is not automatically listed in Borea Discover. The catalogue needs a published GitHub release and a separate content-index listing.
+
+Run the regression checks with "dotnet run --project tests/RegressionTests.csproj". They link the production transport and telemetry helpers; no substitute KSA/StarMap assemblies are used. CI runs them with a .NET 10 SDK.

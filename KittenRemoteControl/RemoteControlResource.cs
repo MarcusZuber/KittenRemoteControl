@@ -481,7 +481,7 @@ namespace KittenRemoteControl
             try
             {
                 var vehicle = Program.ControlledVehicle;
-                var radius = vehicle?.Orbit?.Parent?.GetNearSurfaceRadius() ?? 0.0;
+                var radius = OrbitTelemetry.MeanRadius(vehicle?.Orbit?.Parent);
                 return Json(new { meanRadius = radius });
             }
             catch (Exception ex)
@@ -502,7 +502,7 @@ namespace KittenRemoteControl
                 }
 
                 var apoVal = orbit.Apoapsis;
-                var radiusVal = orbit.Parent?.GetNearSurfaceRadius() ?? 0.0;
+                var radiusVal = OrbitTelemetry.MeanRadius(orbit.Parent);
                 var elevation = apoVal - radiusVal;
 
                 return Json(new { apoapsisElevation = elevation });
@@ -525,7 +525,7 @@ namespace KittenRemoteControl
                 }
 
                 var periVal = orbit.Periapsis;
-                var radiusVal = orbit.Parent?.GetNearSurfaceRadius() ?? 0.0;
+                var radiusVal = OrbitTelemetry.MeanRadius(orbit.Parent);
                 var elevation = periVal - radiusVal;
 
                 return Json(new { periapsisElevation = elevation });

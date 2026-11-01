@@ -17,6 +17,12 @@ namespace KittenRemoteControl
         /// <summary>Queue an action to run on the next main-thread frame.</summary>
         public static void Enqueue(Action action) => Queue.Enqueue(action);
 
+        /// <summary>Discard actions when the mod unloads.</summary>
+        public static void Clear()
+        {
+            while (Queue.TryDequeue(out _)) { }
+        }
+
         /// <summary>Run all queued actions. Call this from the main thread once per frame.</summary>
         public static void Drain()
         {

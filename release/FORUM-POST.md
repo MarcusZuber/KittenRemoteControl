@@ -4,7 +4,7 @@ Kitten Remote Control is an experimental mod for Kitten Space Agency. It exposes
 
 **Compatibility:** tested on Windows with KSA 2026.10.25.5707, StarMap 0.4.8 and Borea. Other platforms have not been retested for this prerelease.
 
-**Download:** https://github.com/attilastrba/KittenRemoteControl/releases/tag/v0.1.0-borea.1 (publish the release before posting).
+**Download:** https://github.com/attilastrba/KittenRemoteControl/releases/tag/v0.1.0-borea.2 (publish the release before posting).
 
 Extract the ZIP's KittenRemoteControl folder into your Borea instance's mods folder and enable it. Start the simulation. REST is on port 8080 and the Telemachus datalink is on port 8085. Run frontend/start-houston.cmd and open http://localhost:8000/houston.html for the dashboard; keep its server running.
 

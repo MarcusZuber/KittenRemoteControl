@@ -146,6 +146,8 @@ namespace KittenRemoteControl
                 Console.WriteLine($"Error stopping REST server: {ex.Message}");
             }
 
+            MainThreadDispatcher.Clear();
+            TelemachusDatalink.ResetDeltaV();
             Patcher.Unload();
         }
     }

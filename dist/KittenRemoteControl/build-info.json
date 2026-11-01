@@ -1,13 +1,13 @@
 {
-    "version":  "0.1.0-borea.1",
-    "targetFramework":  "net10.0",
-    "sourceSha256":  "dd039fa4c1ff0cc2b9d68d9b17e39d5f6b72262a47b2cebe7066d62f1dcbce75",
-    "gameAssemblyVersion":  "2026.10.25.5707",
-    "starMapApiVersion":  "0.4.8.0",
-    "sdk":  "10.0.403",
-    "files":  {
-                  "KittenRemoteControl.dll":  "3f0c601bebf35d00307ef89b64703d05b3f341a2366ae3e4c4cf6986c24cfb28",
-                  "KittenRemoteControl.deps.json":  "1b6de6b391fb0dd76dd862c8fa66cf95aa874087d925602ade97256eae66113e",
-                  "mod.toml":  "906de2f87a81803f1be06c23d3d1e346a7eebfe95338b3b6972358af773e9efc"
-              }
+  "version": "0.1.0-borea.2",
+  "targetFramework": "net10.0",
+  "sourceSha256": "213b3d5cffad0223be86285269b92d08a41429fe61923712bf0cf3009a94c7d0",
+  "gameAssemblyVersion": "2026.10.25.5707",
+  "starMapApiVersion": "0.4.8.0",
+  "sdk": "10.0.403",
+  "files": {
+    "KittenRemoteControl.dll": "8c8e544cdd165d8da3a0b18d871a8f630e7f559be73942feef3d375e27e82a02",
+    "KittenRemoteControl.deps.json": "b7597c03cfe98c2de01a606df415563eca03f0366282b0ab7e6fd27da2fac6ab",
+    "mod.toml": "906de2f87a81803f1be06c23d3d1e346a7eebfe95338b3b6972358af773e9efc"
+  }
 }

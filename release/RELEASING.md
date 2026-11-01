@@ -1,6 +1,6 @@
 # Local release handoff
 
-Prepared version: `0.1.0-borea.1`; intended tag: `v0.1.0-borea.1`.
+Prepared version: `0.1.0-borea.2`; intended tag: `v0.1.0-borea.2`.
 
 1. Run the build command in RELEASE-PACKAGE.md with `-RefreshPrebuilt`, inspect the package and perform the Borea smoke test.
 2. Commit source, release docs and refreshed `dist/KittenRemoteControl` files together. Keep the version unchanged only while the release is unpublished.

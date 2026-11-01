@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-borea.2 — 2026-11-01
+
+- Use the body's mean radius consistently for REST and Telemachus orbital elevations.
+- Reset stage delta-v peak tracking when the craft/stage changes, no craft is available, or the mod unloads.
+- Cancel and close accepted HTTP clients at shutdown and wait for executing handlers before returning.
+- Time out incomplete requests after 15 seconds and discard queued main-thread commands on unload.
+- Add regression checks for telemetry helpers, craft switching, fragmented HTTP, CORS, shutdown, timeouts and restart; run them in CI.
+
+Build and regression checks passed. The previously running game was not restarted for this revision; these checks do not establish new in-game or Wine/CrossOver validation.
+
 ## 0.1.0-borea.1 — 2026-10-31
 
 Experimental Borea compatibility prerelease, based on `fix/wine-httplistener-tcp-server`.

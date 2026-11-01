@@ -31,7 +31,7 @@ Jump to: [Telemachus datalink](#telemachus-datalink-proof-of-concept) ·
 
 ## Installation with Borea
 
-Prepared prerelease: **0.1.0-borea.1**, tested with **KSA 2026.10.25.5707** and **StarMap 0.4.8** on Windows.
+Prepared prerelease: **0.1.0-borea.2**, tested with **KSA 2026.10.25.5707** and **StarMap 0.4.8** on Windows.
 
 1. Download the versioned mod ZIP from [GitHub Releases](https://github.com/attilastrba/KittenRemoteControl/releases), or build it locally as below.
 2. Close the game. In Borea open your instance's mods folder and extract the ZIP's single `KittenRemoteControl` folder there, replacing the previous installation.

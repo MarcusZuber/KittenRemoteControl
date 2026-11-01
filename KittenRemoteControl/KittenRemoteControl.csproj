@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.1.0-borea.1</Version>
+    <Version>0.1.0-borea.2</Version>
     <Authors>Attila Strba</Authors>
     <Description>HTTP remote control, Telemachus telemetry and Houston dashboard for Kitten Space Agency.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -1,7 +1,7 @@
 name: Validate release package
 on:
   push:
-    branches: [main, master, develop, fix/wine-httplistener-tcp-server]
+    branches: [main, master, develop, feature/telemachus-microblocks-integration]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -11,6 +11,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run regression checks without game stubs
+        shell: pwsh
+        run: dotnet run --project tests/RegressionTests.csproj --configuration Release
       # KSA assemblies are proprietary and are not available on hosted runners.
       # Build locally against real installed assemblies, then commit the refreshed
       # prebuilt runtime and its source fingerprint. Never publish a stub build.
